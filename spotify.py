@@ -107,6 +107,10 @@ def _get_json(user, url, data = {}):
 
     return resp.status_code, resp
 
+#
+# Methods below here use the User class from the user module.
+#
+
 def get_playlists(user, limit=50, offset=0):
     """Gets all of the current user's playlists (not including tracks).
        see: https://developer.spotify.com/web-api/get-a-list-of-current-users-playlists/

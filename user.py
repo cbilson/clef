@@ -1,8 +1,13 @@
 from datetime import datetime, timedelta
 import db
 
-def load(id, db = db.connect()):
-    cursor = db.cursor()
+def load(id, connection = None):
+    close_connection = False
+    if not connection:
+        connection = db.connect()
+        close_connection = True
+
+    cursor = connection.cursor()
     cursor.execute('select name, email, joined, average_dancability, '
                    'access_token, token_expiration, refresh_token '
                    'from User '
@@ -19,6 +24,10 @@ def load(id, db = db.connect()):
     user.access_token = row[4]
     user.token_expiration = row[5]
     user.refresh_token = row[6]
+
+    if close_connection:
+        connection.close()
+
     return user
 
 def from_json(json, auth_info = None):
@@ -51,8 +60,13 @@ class User:
         if 'refresh_token' in response_json.keys():
             self.refresh_token = response_json['refresh_token']
 
-    def save(self, db = db.connect()):
-        cursor = db.cursor()
+    def save(self, db_connection = None):
+        close_connection = False
+        if not db_connection:
+            db_connection = db.connect()
+            close_connection = True
+
+        cursor = db_connection.cursor()
 
         # use joined to determine if it's new?
         if not self.joined:
@@ -80,4 +94,6 @@ class User:
                             self.access_token, self.token_expiration, self.refresh_token,
                             self.id))
 
-        db.commit()
+        db_connection.commit()
+        if close_connection:
+            db_connection.close()
