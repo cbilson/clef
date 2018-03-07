@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-import db
+import app.db
 
 def load(id, connection = None):
     close_connection = False
@@ -14,8 +14,10 @@ def load(id, connection = None):
                    'where id = %s',
                    (id,))
 
-    row = cursor.fetchone()
+    if cursor.rowcount == 0:
+        return None
 
+    row = cursor.fetchone()
     user = User(id)
     user.name = row[0]
     user.email = row[1]
