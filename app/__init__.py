@@ -1,4 +1,5 @@
 from flask import Flask
+from flaskext.mysql import MySQL
 import logging, os, sys
 from logging import StreamHandler
 from logging.handlers import RotatingFileHandler
@@ -8,10 +9,6 @@ app = Flask(__name__)
 app.config.update(SESSION_COOKIE_NAME = 'clef_2_session')
 
 if (os.getenv('DEBUG')):
-    stdoutLogger = StreamHandler(sys.stdout)
-    stdoutLogger.setLevel(logging.DEBUG)
-    app.logger.addHandler(stdoutLogger)
-
     app.config.update(
         DEBUG = True,
         # just for running locally
@@ -27,5 +24,14 @@ else:
 
 if not app.config['SECRET_KEY']:
   raise Exception('Please specify a SECRET_KEY or DEBUG environment variable.')
+
+app.config.update(
+    MYSQL_DATABASE_HOST = os.getenv('MYSQL_DATABASE_HOST'),
+    MYSQL_DATABASE_DB = os.getenv('MYSQL_DATABASE_DB'),
+    MYSQL_DATABASE_USER = os.getenv('MYSQL_DATABASE_USER'),
+    MYSQL_DATABASE_PASSWORD = os.getenv('MYSQL_DATABASE_PASSWORD'))
+
+mysql = MySQL()
+mysql.init_app(app)
 
 from app import routes

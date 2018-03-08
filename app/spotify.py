@@ -18,9 +18,7 @@ ENCODED_AUTHENTICATION = base64.b64encode(bytes(CLIENT_ID + ':' + CLIENT_SECRET,
 
 SCOPE = "playlist-read-private user-library-read user-read-email user-read-playback-state user-modify-playback-state user-read-currently-playing user-read-recently-played"
 
-auth_callback_uri = 'http://localhost:5000/authorized'
-
-def get_auth_url(state = None):
+def get_auth_url(auth_callback_uri, state = None):
     """Gets the url to redirect a user to, in order to login to spotify
     and give us access."""
     if not state:
@@ -47,7 +45,7 @@ def get_auth_token_from_redirect_url(url):
     code = result.getquerydict()['code'][0]
     return get_auth_token(code)
 
-def get_auth_token(auth_code):
+def get_auth_token(auth_code, auth_callback_uri):
     """Given a Spotify Auth Code, get a token to use in Spotify API calls.
        Returns (HTTP response code, result).
     """
