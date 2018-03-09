@@ -6,7 +6,9 @@ from logging.handlers import RotatingFileHandler
 
 app = Flask(__name__)
 
-app.config.update(SESSION_COOKIE_NAME = 'clef_2_session')
+app.config.update(
+    SESSION_COOKIE_NAME = 'clef_2_session',
+    SESSION_COOKIE_SECURE = True)
 
 if (os.getenv('DEBUG')):
     app.config.update(
