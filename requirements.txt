@@ -3,3 +3,4 @@ flask-mysql==1.4.0
 flask-shell-ipython==0.3.0
 requests==2.3.0
 uritools==2.1.0
+colorama==0.3.9

@@ -41,8 +41,9 @@ create table Playlist(
        id char(30),
        user_id char(100),
        name varchar(100),
-       description varchar(1000),
-       is_public boolean);
+       is_public boolean,
+       created datetime,
+       snapshot_id varchar(128));
 
 drop table if exists Artist;
 create table Artist (

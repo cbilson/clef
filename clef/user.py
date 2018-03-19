@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from app import mysql
+from clef import mysql, app
 
 class User:
     def __init__(self, id):
@@ -32,6 +32,7 @@ class User:
             user.access_token = row[4]
             user.token_expiration = row[5]
             user.refresh_token = row[6]
+            app.logger.debug('Loaded user %s' % (user.id))
             return user
 
     def from_json(json, auth_info = None):
@@ -52,6 +53,7 @@ class User:
 
         if 'refresh_token' in response_json.keys():
             self.refresh_token = response_json['refresh_token']
+            self.save()
 
     def save(self):
         with mysql.get_db().cursor() as cursor:
@@ -66,6 +68,7 @@ class User:
                                 self.joined, self.average_dancability,
                                 self.access_token, self.token_expiration,
                                 self.refresh_token))
+                app.logger.info('New user %s inserted' % self.id)
             else:
                 cursor.execute('update User '
                                'set name = %s, '
@@ -80,3 +83,4 @@ class User:
                                 self.average_dancability,
                                 self.access_token, self.token_expiration, self.refresh_token,
                                 self.id))
+                app.logger.info('User %s updated' % self.id)

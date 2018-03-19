@@ -1,5 +1,6 @@
 # don't check in secrets
 run.cmd
+run.ps1
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -102,3 +103,8 @@ ENV/
 
 # mypy
 .mypy_cache/
+
+# emacs temp files
+*~
+\#*\#
+\.#*

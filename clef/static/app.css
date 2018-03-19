@@ -1,0 +1,14 @@
+/* #findingGas { */
+/*     font-style: italic; */
+/*     animation-name: strobe-animation; */
+/*     animation-duration: 0.8s; */
+/*     animation-iteration-count: infinite; */
+/* } */
+
+@keyframes strobe-animation {
+    0% { opacity: 1; }
+    25% { opacity: 0.75; }
+    50% { opacity: 0.25; }
+    75% { opacity: 0.75; }
+    100% { opacity: 1; }
+}

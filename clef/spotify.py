@@ -4,7 +4,8 @@ import requests
 import uritools
 import webbrowser
 
-from urllib.parse import urlencode, unquote
+from urllib.parse import urlencode, unquote, urlparse
+from clef import app
 
 CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
 if not CLIENT_ID:
@@ -32,8 +33,8 @@ def get_auth_url(auth_callback_uri, state = None):
 
     return 'https://accounts.spotify.com/authorize/?' + params
 
-def authorize_me():
-    auth_url = get_auth_url()
+def authorize_me(auth_callback_uri = 'http://localhost:5000/authorized'):
+    auth_url = get_auth_url(auth_callback_uri)
     webbrowser.open(auth_url).start()
 
 def get_auth_token_from_redirect_url(url):
@@ -42,13 +43,16 @@ def get_auth_token_from_redirect_url(url):
     browser. This makes it easier to play with interactively. Just call
     this with the url in your browser after the redirect."""
     result = uritools.urisplit(url)
+    parsed = urlparse(url)
+    auth_callback_uri = '%s://%s%s' % (parsed.scheme, parsed.netloc, parsed.path)
     code = result.getquerydict()['code'][0]
-    return get_auth_token(code)
+    return get_auth_token(code, auth_callback_uri)
 
 def get_auth_token(auth_code, auth_callback_uri):
     """Given a Spotify Auth Code, get a token to use in Spotify API calls.
        Returns (HTTP response code, result).
     """
+    app.logger.info('requesting token for authorization code %s, callback %s' % (auth_code, auth_callback_uri))
     headers = {'Authorization': 'Basic ' + ENCODED_AUTHENTICATION}
     data = {'grant_type': 'authorization_code',
             'code': auth_code,
@@ -58,6 +62,10 @@ def get_auth_token(auth_code, auth_callback_uri):
     result = None
 
     if resp.status_code != 200:
+        app.logger.error('failed to get token: %s' % json)
+        # TODO: Need a refresh_access_token that doesn't use a User instance
+        #        if json['error_description'] == 'Authorization code expired':
+        #            refresh_access_token
         result = 'Failed to get token.'
         if 'error_description' in json:
             result = json['error_description']
@@ -66,7 +74,7 @@ def get_auth_token(auth_code, auth_callback_uri):
 
     return resp.status_code, result
 
-def refresh_access_token(user):
+def refresh_user_access_token(user):
     """Call this after an access token has expired to renew it."""
     headers = {'Authorization': 'Basic ' + ENCODED_AUTHENTICATION}
     data = {'grant_type': 'refresh_token',
@@ -103,7 +111,13 @@ def _get_json(user, url, data = {}):
     if resp.status_code == 200:
         return 200, resp.json()
 
-    return resp.status_code, resp
+    json = resp.json()
+    if 'error' in json and 'message' in json['error']:
+      if 'The access token expired' == json['error']['message']:
+          refresh_user_access_token(user)
+          return _get_json(user, url, data)
+
+    return resp.status_code, json
 
 #
 # Methods below here use the User class from the user module.
