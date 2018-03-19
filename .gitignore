@@ -1,6 +1,7 @@
 # don't check in secrets
 run.cmd
 run.ps1
+init.cmd
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -1,6 +1,6 @@
 @if "%SCM_TRACE_LEVEL%" NEQ "4" @echo off
 
-:: Verify node.js installed
+echo Verifying node.js is installed
 where node 2>nul >nul
 IF %ERRORLEVEL% NEQ 0 (
   echo Missing node.js executable, please install node.js, if already installed make sure it can be reached from current environment.
@@ -20,12 +20,10 @@ IF NOT DEFINED DEPLOYMENT_TARGET (
 )
 
 IF NOT DEFINED KUDU_SYNC_CMD (
-  :: Install kudu sync
   echo Installing Kudu Sync
   call npm install kudusync -g --silent
   IF !ERRORLEVEL! NEQ 0 goto error
 
-  :: Locally just running "kuduSync" would also work
   SET KUDU_SYNC_CMD=%appdata%\npm\kuduSync.cmd
 )
 
@@ -35,14 +33,24 @@ SET PYTHON_VER=3.6
 SET PYTHON_HOME=D:\home\python364x64
 SET PYTHON_SCRIPTS=D:\home\python364x64\scripts
 SET PYTHON_EXE=%PYTHON_HOME%\python.exe
-echo PYTHON_EXE = %PYTHON_EXE%
+if not exist "%PYTHON_EXE%" (
+   echo Failed to find python %PYTHON_VER%
+   echo Expected to find python.exe at %PYTHON_EXE%
+   goto error
+)
 
 echo Updating path with python home
 SET PATH=%PYTHON_HOME%;%PYTHON_SCRIPTS%;%PATH%
 
 echo Executing KudoSync
+set KUDO_IGNORE=.git;.hg;.deployment;deploy.cmd;init.cmd;init.cmd.in;sql
 IF /I "%IN_PLACE_DEPLOYMENT%" NEQ "1" (
-  call :ExecuteCmd "%KUDU_SYNC_CMD%" -v 50 -f "%DEPLOYMENT_SOURCE%" -t "%DEPLOYMENT_TARGET%" -n "%NEXT_MANIFEST_PATH%" -p "%PREVIOUS_MANIFEST_PATH%" -i ".git;.hg;.deployment;deploy.cmd"
+  call :ExecuteCmd "%KUDU_SYNC_CMD%" -v 50 ^
+       -f "%DEPLOYMENT_SOURCE%" ^
+       -t "%DEPLOYMENT_TARGET%" ^
+       -n "%NEXT_MANIFEST_PATH%" ^
+       -p "%PREVIOUS_MANIFEST_PATH%" ^
+       -i "%KUDO_IGNORE%"
   IF !ERRORLEVEL! NEQ 0 goto error
 )
 
@@ -68,6 +76,7 @@ echo Runnig Pre-flight check
 set FLASK_APP=clef.py
 set HTTP_PLATFORM_PORT=9000
 %FLASK% preflight-check
+IF !ERRORLEVEL! NEQ 0 goto error
 
 popd
 
