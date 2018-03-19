@@ -18,15 +18,18 @@ Python 3.6.4 (v3.6.4:d48eceb, Dec 19 2017, 06:54:40) [MSC v.1900 64 bit (AMD64)]
 Type 'copyright', 'credits' or 'license' for more information
 IPython 6.2.1 -- An enhanced Interactive Python. Type '?' for help.
 
-In [1]: import db, user, spotify
+In [1]: from clef.user import User
 
-In [2]:
+In [2]: from clef.playlist import Playlist
+
+In [3]: import clef.spotify
+
 ```
 
 3. Autheticate with Spotify:
 
 ``` python
-In [2]: spotify.authorize_me()
+In [2]: clef.spotify.authorize_me()
 ```
 
    After you've authenticated, you will be redirected to a URL like
@@ -34,7 +37,7 @@ In [2]: spotify.authorize_me()
    this function to get the token out:
 
 ``` python
-In [3]: status, token_info = spotify.get_auth_token_from_redirect_url('<<paste in the URL from your browser>>')
+In [3]: status, token_info = clef.spotify.get_auth_token_from_redirect_url('<<paste in the URL from your browser>>')
 ```
 
    If =status= is 200, =token_info= will contain an access_token, good
@@ -51,20 +54,20 @@ In [4]: status, spotify_user = spotify.get_user(token_info['access_token'])
    database:
 
 ``` python
-In [5]: u = user.from_json(spotify_user, token_info)
+In [5]: u = User.from_json(spotify_user, token_info)
 In [6]: u.save()
 ```
 
 6. Once you are saved in the database, we can reload you:
 
 ``` python
-In [7]: u = user.load('cbilson')
+In [7]: u = User.load('cbilson')
 ```
 
 7. And we can use that user to get your playlists from spotify:
 
 ``` python
-In [8]: spotify.get_playlists(u)
+In [8]: clef.spotify.get_playlists(u)
 ```
 
 Next I want to start saving playlists and the tracks they
