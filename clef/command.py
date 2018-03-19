@@ -1,18 +1,52 @@
-import colorama
-import os, sys
+import glob
+import os
+import re
+import sys
 import webbrowser
-from flask import Flask
+
+import click
+import colorama
+
 from clef import app, mysql
+
+def exec_sql_file(sql_file):
+    click.echo('Executing SQL script file: %s' % sql_file)
+    statement = ""
+
+    with mysql.get_db().cursor() as cursor:
+        for line in open(sql_file):
+            if re.match(r'^--', line):  # ignore sql comment lines
+                continue
+            if not re.search(r'[^-;]+;', line):  # keep appending lines that don't end in ';'
+                statement = statement + line
+            else:  # when you get a line ending in ';' then exec statement and reset for next statement
+                statement = statement + line
+                click.echo(colorama.Style.DIM + "Executing SQL statement:")
+                click.echo(statement)
+                cursor.execute(statement)
+                click.echo(colorama.Fore.GREEN + 'done.')
+                statement = ""
+
+module_path = os.path.dirname(os.path.realpath(__file__))
+sql_path = os.path.abspath(module_path + '/../sql')
 
 @app.cli.command()
 def initdb():
     """Run the database DDL scripts to initialize the database."""
-    click.echo('TODO: run the SQL scripts to initialize the database.')
+    colorama.init(autoreset=True)
+    app.config['MYSQL_DATABASE_USER'] = os.environ['MYSQL_ADMIN_DATABASE_USER']
+    app.config['MYSQL_DATABASE_PASSWORD'] = os.environ['MYSQL_ADMIN_DATABASE_PASSWORD']
+    exec_sql_file(sql_path + '/create-database.sql')
 
 @app.cli.command()
 def migratedb():
     """Run migration scripts to update database schema and data."""
-    click.echo('TODO: run migration scripts to update database.')
+    colorama.init(autoreset=True)
+    for file in os.listdir(sql_path):
+        if not re.match(r'^\d+_', file):
+            continue
+
+        exec_sql_file('%s/%s' % (sql_path, file))
 
 @app.cli.command('spotify-dashboard')
 def spotify_dashboard():
@@ -21,19 +55,19 @@ def spotify_dashboard():
 failed_checks = 0
 
 def passed(msg):
-    print(colorama.Fore.GREEN + '+ ' + msg)
+    click.echo(colorama.Fore.GREEN + '+ ' + msg)
 
 def failed(msg):
-    print(colorama.Fore.WHITE + colorama.Back.RED + '- ' + msg)
+    click.echo(colorama.Fore.WHITE + colorama.Back.RED + '- ' + msg)
     failed_checks += 1
 
 @app.cli.command('preflight-check')
 def preflight_check():
     """Validate application configuration."""
     colorama.init(autoreset=True)
-    print()
-    print(colorama.Style.DIM + '=' * 80)
-    print(colorama.Style.DIM + 'Checking environment...')
+    click.echo()
+    click.echo(colorama.Style.DIM + '=' * 80)
+    click.echo(colorama.Style.DIM + 'Checking environment...')
 
     passed('Log path found') if 'LOG_PATH' in os.environ else failed('LOG_PATH missing')
     passed('HTTP port found') if 'HTTP_PLATFORM_PORT' in os.environ else failed('HTTP_PLATFORM_PORT missing')
@@ -53,13 +87,13 @@ def preflight_check():
     except:
         failed('"SELECT 1" resulted in error: %s' % sys.exc_info()[0])
 
-    print()
-    print(colorama.Style.DIM + '=' * 80)
+    click.echo()
+    click.echo(colorama.Style.DIM + '=' * 80)
 
     if failed_checks == 0:
-        print(colorama.Fore.GREEN + 'Everything looks good!')
+        click.echo(colorama.Fore.GREEN + 'Everything looks good!')
     else:
-        print(colorama.Fore.WHITE + colorama.Back.RED + '%s problems found.' % failed_checks)
+        click.echo(colorama.Fore.WHITE + colorama.Back.RED + '%s problems found.' % failed_checks)
 
-    print(colorama.Style.DIM + '=' * 80)
-    print()
+    click.echo(colorama.Style.DIM + '=' * 80)
+    click.echo()
