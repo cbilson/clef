@@ -39,6 +39,18 @@ def spotify_dashboard():
     url = 'https://beta.developer.spotify.com/dashboard/applications/%s' % os.environ['SPOTIFY_CLIENT_ID']
     webbrowser.open(url)
 
+@app.cli.command('prod')
+def spotify_dashboard():
+    """Open the 'Production' version of the publically accessible app.."""
+    url = 'https://clef2.azurewebsites.net/'
+    webbrowser.open(url)
+
+@app.cli.command('chris-test')
+def spotify_dashboard():
+    """Open Chris's test version of the publically accessible app (deployed by pushing to a local repo)."""
+    url = 'https://clef2-chris.azurewebsites.net/'
+    webbrowser.open(url)
+
 @app.cli.command('preflight-check')
 def preflight_check():
     """Validate application configuration."""
