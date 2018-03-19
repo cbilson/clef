@@ -123,10 +123,14 @@ def _get_json(user, url, data = {}):
 # Methods below here use the User class from the user module.
 #
 
-def get_playlists(user, limit=50, offset=0):
+def get_playlists(user, limit=20, offset=0):
     """Gets all of the current user's playlists (not including tracks).
        see: https://developer.spotify.com/web-api/get-a-list-of-current-users-playlists/
     """
+
+    # TODO: Automatically page these using yield - spotify limits you
+    # to 20 playlists per page. This would be a lot easier to use if
+    # it just did the paging for you, using yield.
     data={'limit': str(limit), 'offset': str(offset)}
     return _get_json(user, 'https://api.spotify.com/v1/me/playlists', data)
 

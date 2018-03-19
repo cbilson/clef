@@ -34,7 +34,7 @@ app.logger.info('Initializing MySQL connection to %s, database %s, user %s' % (
     app.config['MYSQL_DATABASE_HOST'],
     app.config['MYSQL_DATABASE_DB'],
     app.config['MYSQL_DATABASE_USER']))
-mysql = MySQL()
+mysql = MySQL(autocommit=True)
 mysql.init_app(app)
 
 from clef import routes
