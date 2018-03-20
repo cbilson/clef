@@ -34,21 +34,39 @@ def migratedb():
         exec_sql_file('%s/%s' % (sql_path, file))
 
 @app.cli.command('spotify-dashboard')
-def spotify_dashboard():
+def open_spotify_dashboard():
     """Open the spotify dashboard to for the application."""
     url = 'https://beta.developer.spotify.com/dashboard/applications/%s' % os.environ['SPOTIFY_CLIENT_ID']
     webbrowser.open(url)
 
 @app.cli.command('prod')
-def spotify_dashboard():
+def open_prod():
     """Open the 'Production' version of the publically accessible app.."""
     url = 'https://clef2.azurewebsites.net/'
     webbrowser.open(url)
 
+@app.cli.command('prod-kudu')
+def open_prod_kudu():
+    """Open the 'Production' version of the publically accessible app.."""
+    url = 'https://clef2.scm.azurewebsites.net/DebugConsole'
+    webbrowser.open(url)
+
 @app.cli.command('chris-test')
-def spotify_dashboard():
-    """Open Chris's test version of the publically accessible app (deployed by pushing to a local repo)."""
+def open_chris_test():
+    """Open Chris's test deployment slot."""
     url = 'https://clef2-chris.azurewebsites.net/'
+    webbrowser.open(url)
+
+@app.cli.command('chris-test-kudu')
+def open_chris_test():
+    """Open DebugConsole on Chris's test deployment slot."""
+    url = 'https://clef2-chris.scm.azurewebsites.net/DebugConsole'
+    webbrowser.open(url)
+
+@app.cli.command('portal')
+def open_portal():
+    """Open the Azure Portal dashboard for Clef Notes."""
+    url = 'https://portal.azure.com/#@chrisbilsoncalicoenergy.onmicrosoft.com/dashboard/private/60b7336f-622f-4867-943f-f37bbbe003cd'
     webbrowser.open(url)
 
 @app.cli.command('preflight-check')
