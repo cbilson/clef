@@ -141,58 +141,41 @@ def load_playlist_tracks(user_id, playlist_id):
 
     artists = [Artist.from_json(x) for x in artists_js.values()]
     artists_dict = dict()
-    click.echo()
-    click.echo('Artists')
-    click.echo('-------')
     for artist in artists:
-        click.echo('%s' % artist)
         artist.save()
         artists_dict[artist.id] = artist
 
-    click.echo(Style.DIM + '=' * 20)
-    click.echo('Total %s artists' % len(artists))
-    click.echo()
+    show_collection(artists)
 
     albums = [Album.from_json(x) for x in albums_js.values()]
     albums_dict = dict()
-    click.echo()
-    click.echo('Albums')
-    click.echo('------')
+
     for album in albums:
-        click.echo('%s' % album)
         album.save()
         albums_dict[album.id] = album
 
         for artist_id in [artist['id'] for artist in albums_js[album.id]['artists']]:
             artist = artists_dict[artist_id]
-            click.echo('\tadding artist %s' % artist.name)
             album.add_artist(artist)
 
         # TODO: link to images
 
-    click.echo(Style.DIM + '=' * 20)
-    click.echo('Total %s albums' % len(albums))
-    click.echo()
+    show_collection(albums)
 
-    click.echo()
-    click.echo('Tracks')
-    click.echo('------')
+    tracks = list()
     for track_js in tracks_js:
         track = Track.from_json(track_js['track'])
         click.echo('%s' % track)
         track.save()
+        tracks.append(track)
 
-        click.echo('\tadding to playlist %s' % playlist.name)
         playlist.add_track(track, track_js['added_at'], track_js['added_by']['id'])
 
         for artist_id in [artist['id'] for artist in track_js['track']['artists']]:
             artist = artists_dict[artist_id]
-            click.echo('\tadding artist %s' % artist.name)
             track.add_artist(artist)
 
-    click.echo(Style.DIM + '=' * 20)
-    click.echo('Total %s tracks' % len(tracks_js))
-    click.echo()
+    show_collection(tracks)
 
     mysql.connection.commit()
 
