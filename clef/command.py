@@ -99,10 +99,18 @@ def load_playlists(user_id):
     click.echo(Style.DIM + '=' * 20)
     click.echo('Total %s for %s' % (len(playlists), user_id))
 
+@app.cli.command('get-user-playlists')
+@click.option('--user-id')
+def get_user_playlists(user_id):
+    """Fetches all user playlists for a user from the clef database."""
+    u = User.load(user_id)
+    show_collection(Playlist.for_user(u))
+
 @app.cli.command('load-playlist-tracks')
 @click.option('--user-id')
 @click.option('--playlist-id')
 def load_playlist_tracks(user_id, playlist_id):
+    """Loads a playlist for a user from spotify and saves it to the clef database."""
     user = User.load(user_id)
     playlist = Playlist.load(playlist_id)
     status, json = get_playlist_tracks(user, playlist)
@@ -236,6 +244,23 @@ def failed(msg):
     global failed_checks
     click.echo(Fore.WHITE + Back.RED + '- ' + msg)
     failed_checks += 1
+
+def show_collection(things):
+    click.echo()
+
+    if len(things) < 1:
+        click.echo('None')
+        return
+
+    name = str(things[0].__class__)
+    click.echo(name)
+    click.echo('-' * len(name))
+    for thing in things:
+        click.echo('%s' % thing)
+
+    click.echo(Style.DIM + '=' * 20)
+    click.echo('Total %s %s' % (len(things), name))
+    click.echo()
 
 def exec_sql_file(sql_file):
     click.echo('Executing SQL script file: %s' % sql_file)
