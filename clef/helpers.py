@@ -9,7 +9,3 @@ def dump_session(msg):
     content = '\n'.join(['%s: %s' % (k,session[k]) for k in session.keys()])
     app.logger.debug('%s. Session:\n%s' % (msg, content))
 
-def get_spotify_playlists(user_id):
-    user = User.load(user_id)
-    playlists = [Playlist.from_json(json) for json in get_all_playlists(user)]
-    return playlists

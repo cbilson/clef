@@ -169,3 +169,23 @@ def get_playlist_tracks(user, playlist):
     url = playlist.tracks_url
     code, json = _get_json(user, url)
     return code, json
+
+def get_all_playlist_tracks(user, playlist):
+    offset = 0
+    limit = 20
+    status, json = get_playlists(user, 0, limit)
+    if status != 200: return []
+
+    app.logger.debug("Next page: %s" % json['next'])
+    accum = list(json['items'])
+    total = json['total']
+    while status == 200:
+        offset += limit
+        if offset > total: break
+        count = min(total-offset, limit)
+        app.logger.debug("requesting playlists %s - %s" % (offset, offset+count))
+        status, json = get_playlists(user, offset, count)
+        app.logger.debug("Next page: %s" % json['next'])
+        if status == 200: accum += json['items']
+
+    return accum
