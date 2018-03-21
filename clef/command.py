@@ -1,6 +1,8 @@
 import os
 import re
 import sys
+import textwrap
+import virtualenv
 import webbrowser
 
 import click
@@ -8,6 +10,12 @@ import colorama
 
 from colorama import Fore, Back, Style
 from clef import app, mysql
+from clef.user import User
+from clef.playlist import Playlist
+from clef.artist import Artist
+from clef.album import Album
+from clef.track import Track
+from clef.spotify import get_all_playlists, get_playlist_tracks
 
 colorama.init(autoreset=True)
 
@@ -15,59 +23,163 @@ module_path = os.path.dirname(os.path.realpath(__file__))
 sql_path = os.path.abspath(module_path + '/../sql')
 failed_checks = 0
 
+@app.cli.command('bootstrap')
+def bootstrap():
+    pass
+
 @app.cli.command()
 def initdb():
     """Run the database DDL scripts to initialize the database."""
     if not 'MYSQL_DATABASE_USER' in os.environ:
         click.echo(Back.RED + colorama)
-    app.config['MYSQL_DATABASE_USER'] = os.environ['MYSQL_ADMIN_DATABASE_USER']
-    app.config['MYSQL_DATABASE_PASSWORD'] = os.environ['MYSQL_ADMIN_DATABASE_PASSWORD']
-    exec_sql_file(sql_path + '/create-database.sql')
+        app.config['MYSQL_USER'] = os.environ['MYSQL_ADMIN_DATABASE_USER']
+        app.config['MYSQL_PASSWORD'] = os.environ['MYSQL_ADMIN_DATABASE_PASSWORD']
+        exec_sql_file(sql_path + '/create-database.sql')
 
 @app.cli.command()
 def migratedb():
     """Run migration scripts to update database schema and data."""
+    if not 'MYSQL_DATABASE_USER' in os.environ:
+        click.echo(Back.RED + colorama)
+        app.config['MYSQL_USER'] = os.environ['MYSQL_ADMIN_DATABASE_USER']
+        app.config['MYSQL_PASSWORD'] = os.environ['MYSQL_ADMIN_DATABASE_PASSWORD']
     for file in os.listdir(sql_path):
         if not re.match(r'^\d+_', file):
             continue
 
         exec_sql_file('%s/%s' % (sql_path, file))
 
-@app.cli.command('spotify-dashboard')
+@app.cli.command('spotify-dashboard', with_appcontext=False)
 def open_spotify_dashboard():
     """Open the spotify dashboard to for the application."""
     url = 'https://beta.developer.spotify.com/dashboard/applications/%s' % os.environ['SPOTIFY_CLIENT_ID']
     webbrowser.open(url)
 
-@app.cli.command('prod')
+@app.cli.command('prod', with_appcontext=False)
 def open_prod():
     """Open the 'Production' version of the publically accessible app.."""
     url = 'https://clef2.azurewebsites.net/'
     webbrowser.open(url)
 
-@app.cli.command('prod-kudu')
+@app.cli.command('prod-kudu', with_appcontext=False)
 def open_prod_kudu():
     """Open the 'Production' version of the publically accessible app.."""
     url = 'https://clef2.scm.azurewebsites.net/DebugConsole'
     webbrowser.open(url)
 
-@app.cli.command('chris-test')
+@app.cli.command('chris-test', with_appcontext=False)
 def open_chris_test():
     """Open Chris's test deployment slot."""
     url = 'https://clef2-chris.azurewebsites.net/'
     webbrowser.open(url)
 
-@app.cli.command('chris-test-kudu')
+@app.cli.command('chris-test-kudu', with_appcontext=False)
 def open_chris_test():
     """Open DebugConsole on Chris's test deployment slot."""
     url = 'https://clef2-chris.scm.azurewebsites.net/DebugConsole'
     webbrowser.open(url)
 
-@app.cli.command('portal')
+@app.cli.command('portal', with_appcontext=False)
 def open_portal():
     """Open the Azure Portal dashboard for Clef Notes."""
     url = 'https://portal.azure.com/#@chrisbilsoncalicoenergy.onmicrosoft.com/dashboard/private/60b7336f-622f-4867-943f-f37bbbe003cd'
     webbrowser.open(url)
+
+@app.cli.command('load-playlists')
+@click.option('--user-id')
+def load_playlists(user_id):
+    """Loads playlists for one user from spotify to the database."""
+    user = User.load(user_id)
+    playlists = [Playlist.from_json(json) for json in get_all_playlists(user)]
+    for p in playlists:
+        p.save()
+        click.echo(p.name)
+
+    mysql.connection.commit()
+    click.echo(Style.DIM + '=' * 20)
+    click.echo('Total %s for %s' % (len(playlists), user_id))
+
+@app.cli.command('load-playlist-tracks')
+@click.option('--user-id')
+@click.option('--playlist-id')
+def load_playlist_tracks(user_id, playlist_id):
+    u = User.load(user_id)
+    pl = Playlist.load(playlist_id)
+    status, json = get_playlist_tracks(u, pl)
+    if status != 200:
+        click.echo('Failed to get playlist tracks. %s, %s' % status, json)
+        return -1
+
+    tracks_js = [item['track'] for item in json['items']]
+    albums_js = dict()
+    for album in [track['album'] for track in tracks_js]:
+        if album['id'] not in albums_js:
+            albums_js[album['id']] = album
+
+    click.echo('Found %s different albums...' % len(albums_js))
+
+    artists_js = dict()
+    for album in albums_js.values():
+        for artist in album['artists']:
+            if artist['id'] not in artists_js:
+                artists_js[artist['id']] = artist
+
+    for track in tracks_js:
+        for artist in track['artists']:
+            if artist['id'] not in artists_js:
+                artists_js[artist['id']] = artist
+
+    click.echo('Found %s different artists...' % len(artists_js))
+
+    artists = [Artist.from_json(x) for x in artists_js.values()]
+    artists_dict = dict()
+    click.echo()
+    click.echo('Artists')
+    click.echo('-------')
+    for artist in artists:
+        click.echo('%s' % artist)
+        artist.save()
+        artists_dict[artist.id] = artist
+
+    click.echo(Style.DIM + '=' * 20)
+    click.echo('Total %s artists' % len(artists))
+    click.echo()
+
+    albums = [Album.from_json(x) for x in albums_js.values()]
+    albums_dict = dict()
+    click.echo()
+    click.echo('Albums')
+    click.echo('------')
+    for album in albums:
+        click.echo('%s' % album)
+        album.save()
+        albums_dict[album.id] = album
+
+        for artist_id in [artist['id'] for artist in albums_js[album.id]['artists']]:
+            artist = artists_dict[artist_id]
+            click.echo('\tadding artist %s' % artist.name)
+            album.add_artist(artist)
+
+        # TODO: link to images
+
+    click.echo(Style.DIM + '=' * 20)
+    click.echo('Total %s albums' % len(albums))
+    click.echo()
+
+    tracks = [Track.from_json(x) for x in tracks_js]
+    click.echo()
+    click.echo('Tracks')
+    click.echo('------')
+    for track in tracks:
+        click.echo('%s' % track)
+        track.save()
+        # TODO: link artists
+
+    click.echo(Style.DIM + '=' * 20)
+    click.echo('Total %s tracks' % len(tracks))
+    click.echo()
+
+    mysql.connection.commit()
 
 @app.cli.command('preflight-check')
 def preflight_check():
@@ -114,6 +226,7 @@ def passed(msg):
     click.echo(Fore.GREEN + '+ ' + msg)
 
 def failed(msg):
+    global failed_checks
     click.echo(Fore.WHITE + Back.RED + '- ' + msg)
     failed_checks += 1
 
@@ -121,17 +234,16 @@ def exec_sql_file(sql_file):
     click.echo('Executing SQL script file: %s' % sql_file)
     statement = ""
 
-    with mysql.get_db().cursor() as cursor:
-        for line in open(sql_file):
-            if re.match(r'^--', line):  # ignore sql comment lines
-                continue
-            if not re.search(r'[^-;]+;', line):  # keep appending lines that don't end in ';'
-                statement = statement + line
-            else:  # when you get a line ending in ';' then exec statement and reset for next statement
-                statement = statement + line
-                click.echo(Style.DIM + "Executing SQL statement:")
-                click.echo(statement)
-                cursor.execute(statement)
-                click.echo(Fore.GREEN + 'done.')
-                statement = ""
-
+    cursor = mysql.connection.cursor()
+    for line in open(sql_file):
+        if re.match(r'^--', line):  # ignore sql comment lines
+            continue
+        if not re.search(r'[^-;]+;', line):  # keep appending lines that don't end in ';'
+            statement = statement + line
+        else:  # when you get a line ending in ';' then exec statement and reset for next statement
+            statement = statement + line
+            click.echo(Style.DIM + "Executing SQL statement:")
+            click.echo(statement)
+            cursor.execute(statement)
+            click.echo(Fore.GREEN + 'done.')
+            statement = ""

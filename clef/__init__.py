@@ -2,7 +2,8 @@ import os
 from logging import StreamHandler, Formatter
 from logging.handlers import RotatingFileHandler
 from flask import Flask
-from flaskext.mysql import MySQL
+from flask_mysqldb import MySQL
+from traitlets.config import Config
 
 app = Flask(__name__)
 app.logger.info('App listening on port %s' % os.getenv('HTTP_PLATFORM_PORT'))
@@ -24,18 +25,29 @@ app.config.update(
     SESSION_COOKIE_NAME = 'clef_2_session',
     SESSION_COOKIE_SECURE = False if app.config['DEBUG'] else False,
     SECRET_KEY = secret_key,
-    MYSQL_DATABASE_HOST = os.getenv('MYSQL_DATABASE_HOST'),
-    MYSQL_DATABASE_DB = os.getenv('MYSQL_DATABASE_DB'),
-    MYSQL_DATABASE_USER = os.getenv('MYSQL_DATABASE_USER'),
-    MYSQL_DATABASE_PASSWORD = os.getenv('MYSQL_DATABASE_PASSWORD'))
+    MYSQL_HOST = os.getenv('MYSQL_DATABASE_HOST'),
+    MYSQL_DB = os.getenv('MYSQL_DATABASE_DB'),
+    MYSQL_USER = os.getenv('MYSQL_DATABASE_USER'),
+    MYSQL_PASSWORD = os.getenv('MYSQL_DATABASE_PASSWORD'))
 
 app.logger.info('Session cookie name: %s (Secure? %s)' % (app.config['SESSION_COOKIE_NAME'], app.config['SESSION_COOKIE_SECURE']))
 app.logger.info('Initializing MySQL connection to %s, database %s, user %s' % (
-    app.config['MYSQL_DATABASE_HOST'],
-    app.config['MYSQL_DATABASE_DB'],
-    app.config['MYSQL_DATABASE_USER']))
-mysql = MySQL(autocommit=True)
-mysql.init_app(app)
+    app.config['MYSQL_HOST'],
+    app.config['MYSQL_DB'],
+    app.config['MYSQL_USER']))
+mysql = MySQL(app)
 
-from clef import routes
+# ipython initialization, for `flask shell`
+ipy_cfg = Config()
+ipy_cfg.InteractiveShellApp.exec_lines = [
+    'import clef',
+    'from clef.spotify import *',
+    'from clef.user import User',
+    'from clef.playlist import Playlist',
+    'from clef.track import Track',
+    'from clef.artist import Artist',
+    'from clef.helpers import *']
+app.config['IPYTHON_CONFIG'] = ipy_cfg
+
 from clef import command
+from clef import routes

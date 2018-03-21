@@ -2,6 +2,7 @@
 run.cmd
 run.ps1
 init.cmd
+init.ps1
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

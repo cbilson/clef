@@ -80,3 +80,44 @@ modules when you have made changes to them:
 %load_ext autoreload
 %autoreload 2
 ```
+
+# Spotify Messages
+
+## get_playlists
+
+``` json
+{'href': 'https://api.spotify.com/v1/users/cbilson/playlists?offset=0&limit=20',
+ 'items': [{'collaborative': False,
+   'external_urls': {'spotify': 'https://open.spotify.com/user/cbilson/playlist/4fIts6ifuNaB6ueuxToWun'},
+   'href': 'https://api.spotify.com/v1/users/cbilson/playlists/4fIts6ifuNaB6ueuxToWun',
+   'id': '4fIts6ifuNaB6ueuxToWun',
+   'images': [{'height': 640,
+     'url': 'https://mosaic.scdn.co/640/0d56ada22e1185b1764ea4060eb3dc24addc6f736c6086f6922b9a44920310b34ef98161bd7adf78767fff2bd704862cc0b7865d2365f67a269a4cbaa77fedfc4a62a3e23f02e4dab7e926e5577566cd',
+     'width': 640},
+    {'height': 300,
+     'url': 'https://mosaic.scdn.co/300/0d56ada22e1185b1764ea4060eb3dc24addc6f736c6086f6922b9a44920310b34ef98161bd7adf78767fff2bd704862cc0b7865d2365f67a269a4cbaa77fedfc4a62a3e23f02e4dab7e926e5577566cd',
+     'width': 300},
+    {'height': 60,
+     'url': 'https://mosaic.scdn.co/60/0d56ada22e1185b1764ea4060eb3dc24addc6f736c6086f6922b9a44920310b34ef98161bd7adf78767fff2bd704862cc0b7865d2365f67a269a4cbaa77fedfc4a62a3e23f02e4dab7e926e5577566cd',
+     'width': 60}],
+   'name': 'My Shazam Tracks',
+   'owner': {'display_name': 'Chris Bilson',
+    'external_urls': {'spotify': 'https://open.spotify.com/user/cbilson'},
+    'href': 'https://api.spotify.com/v1/users/cbilson',
+    'id': 'cbilson',
+    'type': 'user',
+    'uri': 'spotify:user:cbilson'},
+   'public': True,
+   'snapshot_id': 'lQPZYLNntvmcDPPdDaUxZB8GC4gOP7o0chTRYo6OuylPSYZ4dRY1cdYUHjo/DiBv',
+   'tracks': {'href': 'https://api.spotify.com/v1/users/cbilson/playlists/4fIts6ifuNaB6ueuxToWun/tracks',
+    'total': 5},
+   'type': 'playlist',
+   'uri': 'spotify:user:cbilson:playlist:4fIts6ifuNaB6ueuxToWun'}, ...],
+ 'limit': 20,
+ 'next': 'https://api.spotify.com/v1/users/cbilson/playlists?offset=20&limit=20',
+ 'offset': 0,
+ 'previous': None,
+ 'total': 88}
+```
+
+`
