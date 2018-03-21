@@ -56,7 +56,7 @@ class Playlist:
                        'values(%s,%s,%s,%s) '
                        'on duplicate key update '
                        'added_at=%s, added_by=%s',
-                       (self.id, track.id, added_at, added_by))
+                       (self.id, track.id, added_at, added_by, added_at, added_by))
 
     def save(self):
         cursor = mysql.connection.cursor()

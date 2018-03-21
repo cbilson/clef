@@ -22,19 +22,22 @@ create table User(
 drop table if exists Profile;
 create table Profile(
        user_id char(100) references User.id,
-       date_created datetime);
+       date_created datetime,
+       unique key (user_id));
 
 drop table if exists Friend;
 create table Friend(
        user_id char(100) references User.id,
        friend_id char(100) references User.id,
        added_at datetime,
-       strength float);
+       strength float,
+       primary key (user_id, friend_id));
 
 drop table if exists PlaylistFollow;
 create table PlaylistFollow(
        playlist_id char(30) references Playlist.id,
-       user_id char(100) references User.id);
+       user_id char(100) references User.id,
+       unique key (playlist_id, user_id));
 
 drop table if exists Playlist;
 create table Playlist(
@@ -51,7 +54,8 @@ create table PlaylistImage(
        playlist_id char(32) references Playlist.id,
        height int,
        width int,
-       url varchar(255));
+       url varchar(255),
+       unique key (playlist_id, url));
 
 drop table if exists Artist;
 create table Artist(
@@ -70,7 +74,8 @@ create table Album(
 drop table if exists AlbumArtist;
 create table AlbumArtist(
        album_id char(32) references Album.id,
-       artist_id char(32) references Artist.id);
+       artist_id char(32) references Artist.id,
+       unique key (album_id, artist_id));
 
 drop table if exists Track;
 create table Track(
@@ -87,11 +92,13 @@ create table Track(
 drop table if exists TrackArtist;
 create table TrackArtist(
        track_id char(32) references Track.id,
-       artist_id char(32) references Artist.id);
+       artist_id char(32) references Artist.id,
+       unique key (track_id, artist_id));
 
 drop table if exists PlaylistTrack;
 create table PlaylistTrack(
        playlist_id char(30) references Playlist.playlist_id,
        track_id char(30) references Track.track_id,
        added_at datetime,
-       added_by char(100) references User.user_id);
+       added_by char(100), -- references User.user_id,
+       unique key (playlist_id, track_id));

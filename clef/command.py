@@ -103,16 +103,16 @@ def load_playlists(user_id):
 @click.option('--user-id')
 @click.option('--playlist-id')
 def load_playlist_tracks(user_id, playlist_id):
-    u = User.load(user_id)
-    pl = Playlist.load(playlist_id)
-    status, json = get_playlist_tracks(u, pl)
+    user = User.load(user_id)
+    playlist = Playlist.load(playlist_id)
+    status, json = get_playlist_tracks(user, playlist)
     if status != 200:
         click.echo('Failed to get playlist tracks. %s, %s' % status, json)
         return -1
 
-    tracks_js = [item['track'] for item in json['items']]
+    tracks_js = json['items']
     albums_js = dict()
-    for album in [track['album'] for track in tracks_js]:
+    for album in [track['track']['album'] for track in tracks_js]:
         if album['id'] not in albums_js:
             albums_js[album['id']] = album
 
@@ -125,7 +125,7 @@ def load_playlist_tracks(user_id, playlist_id):
                 artists_js[artist['id']] = artist
 
     for track in tracks_js:
-        for artist in track['artists']:
+        for artist in track['track']['artists']:
             if artist['id'] not in artists_js:
                 artists_js[artist['id']] = artist
 
@@ -166,17 +166,24 @@ def load_playlist_tracks(user_id, playlist_id):
     click.echo('Total %s albums' % len(albums))
     click.echo()
 
-    tracks = [Track.from_json(x) for x in tracks_js]
     click.echo()
     click.echo('Tracks')
     click.echo('------')
-    for track in tracks:
+    for track_js in tracks_js:
+        track = Track.from_json(track_js['track'])
         click.echo('%s' % track)
         track.save()
-        # TODO: link artists
+
+        click.echo('\tadding to playlist %s' % playlist.name)
+        playlist.add_track(track, track_js['added_at'], track_js['added_by']['id'])
+
+        for artist_id in [artist['id'] for artist in track_js['track']['artists']]:
+            artist = artists_dict[artist_id]
+            click.echo('\tadding artist %s' % artist.name)
+            track.add_artist(artist)
 
     click.echo(Style.DIM + '=' * 20)
-    click.echo('Total %s tracks' % len(tracks))
+    click.echo('Total %s tracks' % len(tracks_js))
     click.echo()
 
     mysql.connection.commit()

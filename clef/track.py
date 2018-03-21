@@ -62,6 +62,14 @@ class Track:
                         self.album_id, self.disc_number, self.duration_ms,
                         self.explicit, self.href, self.popularity))
 
+    def add_artist(self, artist):
+        cursor = mysql.connection.cursor()
+        cursor.execute('insert into TrackArtist(track_id, artist_id) '
+                       'values(%s, %s) '
+                       'on duplicate key update '
+                       'track_id = %s',
+                       (self.id, artist.id, self.id))
+
     def from_json(json):
         return Track(json['id'], json['name'], json['type'], json['album']['id'],
                      json['disc_number'], json['duration_ms'], json['explicit'],
