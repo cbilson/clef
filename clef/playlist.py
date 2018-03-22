@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from clef import mysql
+from clef import mysql, app
 
 class Playlist:
     def __init__(self, id, href=None, owner=None, name=None, public=False, snapshot_id=None, tracks_url=None):
@@ -37,9 +37,10 @@ class Playlist:
 
     def for_user(user):
         cursor = mysql.connection.cursor()
-        cursor.execute('select id, href, owner, name, public, snapshot_id, tracks_url '
-                       'from Playlist '
-                       'where owner = %s',
+        cursor.execute('select p.id, p.href, p.owner, p.name, p.public, p.snapshot_id, p.tracks_url '
+                       'from Playlist p '
+                       '  inner join PlaylistFollow pf on p.id = pf.playlist_id '
+                       'where pf.user_id = %s',
                        (user.id,))
         return [Playlist._from_row(row) for row in cursor]
 
@@ -71,3 +72,24 @@ class Playlist:
              self.href, self.owner,
              self.name, self.public,
              self.snapshot_id, self.tracks_url))
+
+class PlaylistSummaryView:
+    def __init__(self, id, name, track_count):
+        self.id = id
+        self.name = name
+        self.track_count = track_count
+
+    def __repr__(self):
+        return 'PlaylistSummaryView(id="%s", name="%s", track_count=%s)' % (self.id, self.name, self.track_count)
+
+    def for_user(user):
+        cursor = mysql.connection.cursor()
+        cursor.execute(
+            'select p.id, p.name, count(*) '
+            'from Playlist p '
+            '  inner join PlaylistFollow pf on p.id = pf.playlist_id '
+            '  inner join PlaylistTrack pt on p.id = pt.playlist_id '
+            'where pf.user_id=%s '
+            'group by p.id',
+            (user.id,))
+        return [PlaylistSummaryView(row[0], row[1], row[2]) for row in cursor]

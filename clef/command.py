@@ -11,7 +11,7 @@ import colorama
 from colorama import Fore, Back, Style
 from clef import app, mysql
 from clef.user import User
-from clef.playlist import Playlist
+from clef.playlist import Playlist, PlaylistSummaryView
 from clef.artist import Artist
 from clef.album import Album
 from clef.track import Track
@@ -93,6 +93,7 @@ def load_playlists(user_id):
     playlists = [Playlist.from_json(json) for json in get_all_playlists(user)]
     for p in playlists:
         p.save()
+        user.add_playlist(p)
         click.echo(p.name)
 
     mysql.connection.commit()
@@ -105,6 +106,13 @@ def get_user_playlists(user_id):
     """Fetches all user playlists for a user from the clef database."""
     u = User.load(user_id)
     show_collection(Playlist.for_user(u))
+
+@app.cli.command('get-user-playlists-summary')
+@click.option('--user-id')
+def get_user_playlists_summary(user_id):
+    """Fetches a user's playlist summary view (what's shown on the user page)."""
+    u = User.load(user_id)
+    show_collection(PlaylistSummaryView.for_user(u))
 
 @app.cli.command('load-all-playlist-tracks')
 @click.option('--user-id')

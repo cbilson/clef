@@ -4,7 +4,7 @@
 <h5>Your Playlists</h5>
 <ul>
 {% for playlist in playlists %}
-  <li>{{playlist.name}}</li>
+  <li>{{playlist.name}} ({{playlist.track_count}} tracks)</li>
 {% endfor %}
 </ul>
 {% endblock %}

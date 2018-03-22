@@ -69,6 +69,13 @@ class User:
             self.refresh_token = response_json['refresh_token']
             self.save()
 
+    def add_playlist(self, playlist):
+        cursor = mysql.connection.cursor()
+        cursor.execute('insert into PlaylistFollow(playlist_id, user_id) '
+                       'values(%s, %s) '
+                       'on duplicate key update playlist_id=%s',
+                       (playlist.id, self.id, playlist.id))
+
     def save(self):
         cursor = mysql.connection.cursor()
         cursor.execute('insert into User(id, name, email, '

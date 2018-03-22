@@ -3,7 +3,7 @@ from urllib.parse import unquote
 from flask import render_template, request, session, redirect, url_for
 from clef.spotify import get_auth_url, get_auth_token, get_user, get_playlists
 from clef.user import User
-from clef.playlist import Playlist
+from clef.playlist import Playlist, PlaylistSummaryView
 from clef.helpers import dump_session
 from clef import app
 
@@ -34,7 +34,7 @@ def user(id):
 
             target_user = user if id == user.id else User.load(id)
 
-            playlists = list(Playlist.for_user(target_user))
+            playlists = PlaylistSummaryView.for_user(target_user)
 
             if target_user == user:
                 return render_template('user.html', user=user, target_user=target_user, playlists=playlists)
