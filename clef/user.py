@@ -76,6 +76,12 @@ class User:
                        'on duplicate key update playlist_id=%s',
                        (playlist.id, self.id, playlist.id))
 
+    def remove_playlist(self, playlist):
+        cursor = mysql.connection.cursor()
+        cursor.execute('delete from PlaylistFollow '
+                       'where playlist_id=%s and user_id=%s',
+                       (playlist.id, self.id))
+
     def save(self):
         cursor = mysql.connection.cursor()
         cursor.execute('insert into User(id, name, email, '

@@ -1,10 +1,33 @@
 {% extends "layout.html" %}
+{% block nav %}
+<li><a id="refreshData" href="#">Refresh My Data</a></li>
+{% endblock %}
 {% block body %}
 <h1>{{user.id}}</h1>
 <h5>Your Playlists</h5>
-<ul>
-{% for playlist in playlists %}
+<ul id="playlists">
+  {% for playlist in playlists %}
   <li>{{playlist.name}} ({{playlist.track_count}} tracks)</li>
-{% endfor %}
+  {% endfor %}
 </ul>
+{% endblock %}
+{% block scripts %}
+<script>
+ var refreshData = document.getElementById('refreshData');
+ var playlistsHtml = document.getElementById('playlists');
+ refreshData.addEventListener('click', function(e) {
+   if (refreshData.classList.contains('disabled')) { return; }
+   refreshData.classList.add('disabled');
+   var xhr = new XMLHttpRequest();
+   xhr.open('POST', 'refresh');
+   xhr.onload = function() {
+     if (xhr.status == 200) {
+       playlistHtml.innerHTML = xhr.responseText;
+     }
+     refreshData.classList.remove('disabled');
+   }
+
+   xhr.send();
+ });
+</script>
 {% endblock %}
