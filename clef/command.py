@@ -106,6 +106,15 @@ def get_user_playlists(user_id):
     u = User.load(user_id)
     show_collection(Playlist.for_user(u))
 
+@app.cli.command('load-all-playlist-tracks')
+@click.option('--user-id')
+@click.pass_context
+def load_all_playlist_tracks(ctx, user_id):
+    user = User.load(user_id)
+    for playlist in Playlist.for_user(user):
+        click.echo("Loading playlist %s..." % playlist.name)
+        ctx.invoke(load_playlist_tracks, user_id=user.id, playlist_id=playlist.id)
+
 @app.cli.command('load-playlist-tracks')
 @click.option('--user-id')
 @click.option('--playlist-id')
@@ -118,9 +127,10 @@ def load_playlist_tracks(user_id, playlist_id):
         click.echo('Failed to get playlist tracks. %s, %s' % status, json)
         return -1
 
-    tracks_js = json['items']
+    tracks_js = [item for item in json['items'] if item['track']['id'] is not None]
     albums_js = dict()
     for album in [track['track']['album'] for track in tracks_js]:
+        if album['id'] is None: continue
         if album['id'] not in albums_js:
             albums_js[album['id']] = album
 
@@ -129,11 +139,13 @@ def load_playlist_tracks(user_id, playlist_id):
     artists_js = dict()
     for album in albums_js.values():
         for artist in album['artists']:
+            if artist['id'] is None: continue
             if artist['id'] not in artists_js:
                 artists_js[artist['id']] = artist
 
     for track in tracks_js:
         for artist in track['track']['artists']:
+            if artist['id'] is None: continue
             if artist['id'] not in artists_js:
                 artists_js[artist['id']] = artist
 
@@ -154,7 +166,7 @@ def load_playlist_tracks(user_id, playlist_id):
         album.save()
         albums_dict[album.id] = album
 
-        for artist_id in [artist['id'] for artist in albums_js[album.id]['artists']]:
+        for artist_id in [artist['id'] for artist in albums_js[album.id]['artists'] if id in artist]:
             artist = artists_dict[artist_id]
             album.add_artist(artist)
 
@@ -169,9 +181,11 @@ def load_playlist_tracks(user_id, playlist_id):
         track.save()
         tracks.append(track)
 
-        playlist.add_track(track, track_js['added_at'], track_js['added_by']['id'])
+        if 'added_by' in track_js and track_js['added_by'] is not None:
+            added_by = track_js['added_by']['id']
+            playlist.add_track(track, track_js['added_at'], added_by)
 
-        for artist_id in [artist['id'] for artist in track_js['track']['artists']]:
+        for artist_id in [artist['id'] for artist in track_js['track']['artists'] if id in artist]:
             artist = artists_dict[artist_id]
             track.add_artist(artist)
 

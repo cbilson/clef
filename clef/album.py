@@ -9,6 +9,7 @@ class Album:
         self.href = href
 
     def from_json(json):
+        if json['id'] is None: raise ValueError('Album has no id: %s' % json)
         return Album(json['id'], json['name'], json['album_type'], json['href'])
 
     def save(self):

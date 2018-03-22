@@ -18,6 +18,9 @@ class Artist:
         return 'Artist(%s)' % ', '.join(ctor_args)
 
     def from_json(json):
+        if json['id'] is None:
+            raise ValueError('No ID for artist: %s' % json)
+
         return Artist(json['id'], json['name'], json['type'], json['href'])
 
     def _from_row(row):
