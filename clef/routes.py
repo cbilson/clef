@@ -30,19 +30,13 @@ def user(id):
         app.logger.info('Loading user %s' % id)
         user = User.load(session['user_id'])
         if user:
+            if id != user.id:
+                return render('error.html', 'Viewing other user profiles is not supported at this time.')
+
             app.logger.info('User %s is logged in.' % user.id)
-
-            target_user = user if id == user.id else User.load(id)
-
-            playlists = PlaylistSummaryView.for_user(target_user)
-
-            if target_user == user:
-                return render_template('user.html', user=user, target_user=target_user, playlists=playlists)
-            else:
-                # TODO: show the current user some information about
-                # another user
-                pass
-
+            playlists = PlaylistSummaryView.for_user(user)
+            return render_template('user.html', user=user, target_user=target_user, playlists=playlists)
+            
         app.logger.warn('User %s not found in database.' % user_id)
     else:
         dump_session('No user_id in current session')
