@@ -36,16 +36,6 @@ def user(id):
 
             playlists = list(Playlist.for_user(target_user))
 
-            # TODO: if the user has no playlists, or we haven't
-            # refreshed them in a while, do that now.
-            if len(playlists) == 0:
-                status, res = get_playlists(target_user)
-                if status == 200:
-                    for p in res['items']:
-                        playlist = Playlist.from_json(p)
-                        playlist.save()
-                        playlists.append(playlist)
-
             if target_user == user:
                 return render_template('user.html', user=user, target_user=target_user, playlists=playlists)
             else:

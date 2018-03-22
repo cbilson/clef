@@ -71,6 +71,7 @@ class Track:
                        (self.id, artist.id, self.id))
 
     def from_json(json):
+        if json['id'] is None: raise ValueError('Track has no id: %s' % json)
         return Track(json['id'], json['name'], json['type'], json['album']['id'],
                      json['disc_number'], json['duration_ms'], json['explicit'],
                      json['href'], json['popularity'])

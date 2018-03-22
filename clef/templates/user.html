@@ -3,7 +3,8 @@
 <h1>{{user.id}}</h1>
 <h5>Your Playlists</h5>
 <ul>
-  
-  <li></li>
+{% for playlist in playlists %}
+  <li>{{playlist.name}}</li>
+{% endfor %}
 </ul>
 {% endblock %}
