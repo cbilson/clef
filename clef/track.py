@@ -16,9 +16,7 @@ class Track:
         self.popularity = popularity
 
     def _from_row(row):
-        return Track(row['id'], row['name'], row['type'],
-                     row['album_id'], row['disc_number'], row['duration_ms'],
-                     row['explicit'], row['popularity'])
+        return Track(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7])
 
     def load(id):
         app.logger.debug('fetching track %s' % id)
