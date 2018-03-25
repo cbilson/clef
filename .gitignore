@@ -110,3 +110,6 @@ ENV/
 *~
 \#*\#
 \.#*
+
+# clef logs
+clef.log*
