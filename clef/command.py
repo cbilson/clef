@@ -36,11 +36,23 @@ def bootstrap():
 @app.cli.command()
 def initdb():
     """Run the database DDL scripts to initialize the database."""
-    if not 'MYSQL_DATABASE_USER' in os.environ:
-        click.echo(Back.RED + colorama)
-        app.config['MYSQL_USER'] = os.environ['MYSQL_ADMIN_DATABASE_USER']
-        app.config['MYSQL_PASSWORD'] = os.environ['MYSQL_ADMIN_DATABASE_PASSWORD']
-        exec_sql_file(sql_path + '/create-database.sql')
+    app.config['MYSQL_USER'] = os.environ['MYSQL_ADMIN_DATABASE_USER']
+    app.config['MYSQL_PASSWORD'] = os.environ['MYSQL_ADMIN_DATABASE_PASSWORD']
+
+    script = 'create-database.sql'
+    if app.config['MYSQL_DB'] != 'clef':
+        script = 'create-database-%s.sql' % app.config['MYSQL_DB']
+    else:
+        return
+
+    exec_sql_file(script)
+    exec_sql_file('create-schema.sql', use=app.config['MYSQL_DB'])
+
+    script = 'post-create-database.sql'
+    if app.config['MYSQL_DB'] != 'clef':
+        script = 'post-create-database-%s.sql' % app.config['MYSQL_DB']
+
+    exec_sql_file(script, use=app.config['MYSQL_DB'])
 
 @app.cli.command()
 def migratedb():
@@ -284,9 +296,18 @@ def import_user_playlists(user_id):
 def import_user_playlist(user_id, playlist_id, force=False):
     """Imports a single user playlist from spotify, regardless if it has been changed or not."""
     user = User.load(user_id)
-    t, al, ar = Playlist.import_user_playlist(user, playlist_id)
+    t, al, ar = Playlist.import_user_playlist(user, playlist_id, force)
     mysql.connection.commit()
     click.echo('done. %s tracks, %s albums, %s artists.' % (t, al, ar))
+
+@app.cli.command('remove-playlist')
+@click.option('--user-id')
+@click.option('--playlist-id')
+def remove_playlist(user_id, playlist_id):
+    """Deletes playlists."""
+    user = User.load(user_id)
+    Playlist.remove_playlists(user, playlist_id)
+    mysql.connection.commit()
 
 #
 # Testing Commands
@@ -358,20 +379,35 @@ def show_collection(things):
     click.echo('Total %s %s' % (len(things), name))
     click.echo()
 
-def exec_sql_file(sql_file):
+def exec_sql_file(sql_file, use=None):
+    full_path = '%s/%s' % (sql_path, sql_file)
+    if not os.path.isfile(full_path):
+        click.echo('Not executing non-existant script %s' % sql_file)
+        return
+
     click.echo('Executing SQL script file: %s' % sql_file)
     statement = ""
+    if use is not None:
+        statement = "use %s;" %use
 
-    cursor = mysql.connection.cursor()
-    for line in open(sql_file):
+    connection = mysql.connect
+    cursor = connection.cursor()
+    for line in open(full_path):
         if re.match(r'^--', line):  # ignore sql comment lines
             continue
         if not re.search(r'[^-;]+;', line):  # keep appending lines that don't end in ';'
             statement = statement + line
         else:  # when you get a line ending in ';' then exec statement and reset for next statement
             statement = statement + line
+
+            # replace 'macros'
+            statement = statement.replace('__DB_USER__', os.environ['MYSQL_DATABASE_USER'])
+            statement = statement.replace('__DB_PASSWORD__', os.environ['MYSQL_DATABASE_PASSWORD'])
             click.echo(Style.DIM + "Executing SQL statement:")
             click.echo(statement)
             cursor.execute(statement)
             click.echo(Fore.GREEN + 'done.')
             statement = ""
+
+    cursor.close()
+    connection.close()

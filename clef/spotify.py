@@ -133,7 +133,8 @@ def get_user_playlists(user):
        see: https://developer.spotify.com/web-api/get-a-list-of-current-users-playlists/
     """
     params = {'limit': 50, 'offset': 0}
-    status, result = _get_json(user, 'https://api.spotify.com/v1/users/me/playlists', params=params)
+    url = 'https://api.spotify.com/v1/users/%s/playlists' % user.id
+    status, result = _get_json(user, url, params=params)
     if status != 200:
         app.logger.error('failed to retrieve playlists for %s' % user.id)
         return
@@ -143,7 +144,7 @@ def get_user_playlists(user):
     params['offset'] += params['limit']
 
     while params['offset'] < total:
-        status, result = _get_json(user, 'https://api.spotify.com/v1/users/me/playlists', params=params)
+        status, result = _get_json(user, url, params=params)
         if status != 200:
             app.logger.error('failed to retrieve playlists for %s' % user.id)
             return
@@ -188,7 +189,7 @@ def get_playlist_tracks(user, playlist, total=None, fields=DEFAULT_PLAYLIST_TRAC
         for item in result['items']: yield item
         params['offset'] += params['limit']
 
-DEFAULT_ALBUM_FIELDS = 'artists.id,genres,id,images(width,height,url,label,name,popularity,release_date)'
+DEFAULT_ALBUM_FIELDS = 'artists.id,genres,id,images(width,height,url),label,name,popularity,release_date,tracks.href'
 def get_albums(user, album_ids, fields=DEFAULT_ALBUM_FIELDS):
     limit = 20
     queue = list(album_ids)

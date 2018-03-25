@@ -50,6 +50,9 @@ def user(id):
 
     return login()
 
+# TODO: expose a way to update user-email address
+# when adding a new user, copy e-mail from spotify then save that in our database.
+
 @app.route('/user/<user_id>/refresh', methods=['POST'])
 def refresh(user_id):
     if 'user_id' not in session: abort(401)

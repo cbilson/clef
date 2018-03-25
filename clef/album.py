@@ -11,7 +11,7 @@ class Album:
         self.release_date = release_date
 
     def from_json(json):
-        if json['id'] is None: raise ValueError('Album has no id: %s' % json)
+        if 'id' not in json or json['id'] is None: raise ValueError('Album has no id: %s' % json)
         return Album(json['id'], json['name'], json['label'], json['album_type'],
                      json['popularity'], json['release_date'])
 
@@ -46,8 +46,8 @@ class Album:
                        'url=%s',
                        (self.id, width, height, url, url))
 
-    def _from_rows(row):
-        return Album(row[0], row[1], row[2], row[3], genres, row[4], row[5])
+    def _from_row(row):
+        return Album(row[0], row[1], row[2], row[3], row[4], row[5])
 
     def load(id):
         cursor = mysql.connection.cursor()
