@@ -114,6 +114,7 @@ class Playlist:
             pl.save()
 
             new_track_ids = set()
+            new_artist_ids = set()
             track_albums = []
             track_artists = []
             items_js = [item for item in spotify.get_playlist_tracks(user, pl)]
@@ -125,24 +126,27 @@ class Playlist:
                 new_track_ids.add(track_js['id'])
                 track_albums.append((track_js['id'], track_js['album']['id']))
                 for artist_js in track_js['artists']:
+                    if artist_js['id'] not in artists: new_artist_ids.add(artist_js['id'])
                     track_artists.append((track_js['id'], artist_js['id']))
 
             app.logger.debug('%s new tracks' % len(new_track_ids))
             new_track_count += len(new_track_ids)
 
             new_album_ids = set()
+            album_artists = []
             albums_js = [track['album'] for track in tracks_js]
             album_ids = [album['id'] for album in albums_js if album['id'] not in albums]
             albums.update(Album.load_many(album_ids))
-            for album_id in album_ids:
-                if album_id in albums: continue
-                new_album_ids.add(album_id)
+            for album_js in albums_js:
+                for artist_js in album_js['artists']:
+                    album_artists.append((album_js['id'], artist_js['id']))
+
+                if album_js['id'] in albums: continue
+                new_album_ids.add(album_js['id'])
 
             app.logger.debug('%s new albums' % len(new_album_ids))
             new_album_count += len(new_album_ids)
 
-            # assumption: track.artists \subset track.album.artists
-            new_artist_ids = set()
             artists_js = [artist for album in albums_js for artist in album['artists']]
             artist_ids = [artist['id'] for artist in artists_js if artist['id'] not in artists]
             artists.update(Artist.load_many(artist_ids))
@@ -175,8 +179,8 @@ class Playlist:
                 albums[album_id].add_artist(artists[artist_id])
 
             app.logger.debug("linking tracks and playlists")
-            for track_id in new_track_ids:
-                pl.add_track(tracks[track_id])
+            for item_js in items_js:
+                pl.add_track(tracks[track_id], item_js['added_at'], item_js['added_by']['id'])
 
         return new_track_count, new_album_count, new_artist_count
 
