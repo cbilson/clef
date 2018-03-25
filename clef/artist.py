@@ -2,33 +2,50 @@ from datetime import datetime, timedelta
 from clef import mysql, app
 
 class Artist:
-    def __init__(self, id, name, type, href):
+    def __init__(self, id, name, type, followers, popularity):
         self.id = id
         self.name = name
         self.type = type
-        self.href = href
+        self.followers = followers
+        self.popularity = popularity
 
     def __repr__(self):
         ctor_args = [
             'id="%s"' % self.id,
             'name="%s"' % self.name,
             'type="%s"' % self.type,
-            'href="%s"' % self.href]
+            'followers=%s' % self.followers,
+            'popularity=%s' % self.popularity]
 
         return 'Artist(%s)' % ', '.join(ctor_args)
 
-    def from_json(json):
-        if json['id'] is None:
-            raise ValueError('No ID for artist: %s' % json)
+    def from_json(js):
+        if 'id' not in js:
+            raise ValueError('No ID for artist: %s' % js)
 
-        return Artist(json['id'], json['name'], json['type'], json['href'])
+        return Artist(js['id'], js['name'], js['type'], js['followers']['total'], js['popularity'])
+
+    def import_json(js):
+        """Create an Artist from JSON, save it, and create child objects as well."""
+        artist = Artist.from_json(js)
+        artist.save()
+
+        if 'genre' in js:
+            for genre in js['genres']:
+                artist.add_genre(genre)
+
+        if 'images' in js:
+            for image in js['images']:
+                artist.add_image(image['width'], image['height'], image['url'])
+
+        return artist
 
     def _from_row(row):
-        return Artist(row[0], row[1], row[2], row[3])
+        return Artist(row[0], row[1], row[2], row[3], row[4])
 
     def load(id):
         cursor = mysql.connection.cursor()
-        cursor.execute('select id, name, type, href '
+        cursor.execute('select id, name, type, followers, popularity '
                        'from Artist '
                        'where id = %s',
                        (id,))
@@ -36,13 +53,39 @@ class Artist:
         if cursor.rowcount == 0:
             return None
 
-        return _from_row(cursor.fetchone())
+        return Artist._from_row(cursor.fetchone())
+
+    def load_many(ids):
+        params = ','.join(['%s'] * len(ids))
+        cursor = mysql.connection.cursor()
+        cursor.execute('select id, name, type, followers, popularity '
+                       'from Artist '
+                       'where id in (%s)' % params,
+                       tuple(ids))
+        artists = [Artist._from_row(row) for row in cursor]
+        return {artist.id:artist for artist in artists}
 
     def save(self):
         cursor = mysql.connection.cursor()
-        cursor.execute('insert into Artist(id, name, type, href) '
+        cursor.execute('insert into Artist(id, name, type, followers, popularity) '
+                       'values(%s, %s, %s, %s, %s) '
+                       'on duplicate key update '
+                       'name=%s, type=%s, followers=%s, popularity=%s',
+                       (self.id, self.name, self.type, self.followers, self.popularity,
+                        self.name, self.type, self.followers, self.popularity))
+
+    def add_genre(self, genre):
+        cursor = mysql.connection.cursor()
+        cursor.execute('insert into ArtistGenre(artist_id, genre) '
+                       'values(%s, %s) '
+                       'on duplicate key update '
+                       'genre=%s',
+                       (self.id, genre, genre))
+
+    def add_image(self, width, height, url):
+        cursor = mysql.connection.cursor()
+        cursor.execute('insert into ArtistImage(artist_id, width, height, url) '
                        'values(%s, %s, %s, %s) '
                        'on duplicate key update '
-                       'name=%s, type=%s, href=%s',
-                       (self.id, self.name, self.type, self.href,
-                        self.name, self.type, self.href))
+                       'width=%s, height=%s, url=%s',
+                       (self.id, width, height, url, width, height, url))

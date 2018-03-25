@@ -1,4 +1,5 @@
 import base64
+import json
 import os
 import requests
 import uritools
@@ -108,17 +109,18 @@ def get_user(token):
 def _get_json(user, url, params={}, data = {}):
     """Generic GET using the spotify API."""
     headers = {'Authorization': 'Bearer ' + user.access_token}
-    app.logger.debug('Spotify Request: %s' % url)
+    app.logger.debug('Spotify Request: %s, params: %s' % (url, params))
     resp = requests.get(url, headers=headers, params=params, data=data)
     if resp.status_code == 200:
         return 200, resp.json()
 
+    app.logger.debug('Result: %s, %s' % (resp.status_code, resp.json()))
     json = resp.json()
     if 'error' in json and 'message' in json['error']:
       if 'The access token expired' == json['error']['message']:
           refresh_user_access_token(user)
-          app.logger.debug('Spotify Request: %s' % url)
-          return _get_json(user, url, data)
+          app.logger.debug('Spotify Request: %s, params: %s' % (url, params))
+          return _get_json(user, url, params=params, data=data)
 
     return resp.status_code, json
 
@@ -126,66 +128,139 @@ def _get_json(user, url, params={}, data = {}):
 # Methods below here use the User class from the user module.
 #
 
-def get_playlists(user, offset=0, limit=20):
+def get_user_playlists(user):
     """Gets all of the current user's playlists (not including tracks).
        see: https://developer.spotify.com/web-api/get-a-list-of-current-users-playlists/
     """
+    params = {'limit': 50, 'offset': 0}
+    status, result = _get_json(user, 'https://api.spotify.com/v1/users/me/playlists', params=params)
+    if status != 200:
+        app.logger.error('failed to retrieve playlists for %s' % user.id)
+        return
 
-    # TODO: Automatically page these using yield - spotify limits you
-    # to 20 playlists per page. This would be a lot easier to use if
-    # it just did the paging for you, using yield.
-    params = {'limit': str(limit), 'offset': str(offset)}
-    app.logger.debug("limit: %s, offset: %s" % (limit, offset))
-    return _get_json(user, 'https://api.spotify.com/v1/users/%s/playlists' % user.id, params=params)
+    total = int(result['total'])
+    for playlist in result['items']: yield playlist
+    params['offset'] += params['limit']
 
-def get_all_playlists(user):
-    offset = 0
+    while params['offset'] < total:
+        status, result = _get_json(user, 'https://api.spotify.com/v1/users/me/playlists', params=params)
+        if status != 200:
+            app.logger.error('failed to retrieve playlists for %s' % user.id)
+            return
+
+        for playlist in result['items']: yield playlist
+        params['offset'] += params['limit']
+
+DEFAULT_PLAYLIST_FIELDS = ('collaborative,description,id,name,owner.id,public,snapshot_id,followers.total,images')
+def get_playlist(user, id, owner=None, fields=DEFAULT_PLAYLIST_FIELDS):
+    """Gets a specific playlist."""
+    if owner is None: owner = user.id
+    playlist_url = 'https://api.spotify.com/v1/users/%s/playlists/%s' % (owner, id)
+    status, playlist = _get_json(user, playlist_url, params={'fields':fields})
+    if status != 200:
+        app.logger.error('Error fetching playlist %s/%s: %s, %s' % (owner, id, status, playlist))
+        return None
+
+    return playlist
+
+DEFAULT_PLAYLIST_TRACK_FIELDS = ('items(added_at,added_by.id,total,'
+                                 'track(id,name,type,disc_number,duration_ms,explicit,href,popularity,'
+                                 'artists(id),'
+                                 'album(id,artists(id))))')
+def get_playlist_tracks(user, playlist, total=None, fields=DEFAULT_PLAYLIST_TRACK_FIELDS):
+    """Gets the tracks associated with a playlist. NOTE: this only ever gives 100 tracks and doesn't page.
+       We should probably just not use this method."""
+    if total is None:
+        pl = get_playlist(user, playlist.id, playlist.owner, fields='tracks.total')
+        if 'tracks' in pl and 'total' in pl['tracks']:
+            total = int(pl['tracks']['total'])
+        else:
+            app.logger.error('Failed to determine total tracks for %s.' % playlist)
+
+    url = 'https://api.spotify.com/v1/users/%s/playlists/%s/tracks' % (playlist.owner, playlist.id)
+    params = {'fields':fields, 'offset': 0, 'limit': 100}
+    while params['offset'] < total:
+        status, result = _get_json(user, url, params=params)
+        if status != 200:
+            app.logger.error('Failed to get tracks for playlist %s: %s' % (playlist.id, result))
+            return
+
+        for item in result['items']: yield item
+        params['offset'] += params['limit']
+
+DEFAULT_ALBUM_FIELDS = 'artists.id,genres,id,images(width,height,url,label,name,popularity,release_date)'
+def get_albums(user, album_ids, fields=DEFAULT_ALBUM_FIELDS):
     limit = 20
-    status, json = get_playlists(user, 0, limit)
-    if status != 200: return []
+    queue = list(album_ids)
+    url = 'https://api.spotify.com/v1/albums/'
+    params = {'ids':','.join(queue[0:limit]), 'fields':fields}
 
-    app.logger.debug("Next page: %s" % json['next'])
-    accum = list(json['items'])
-    total = json['total']
-    while status == 200:
-        offset += limit
-        if offset > total: break
-        count = min(total-offset, limit)
-        app.logger.debug("requesting playlists %s - %s" % (offset, offset+count))
-        status, json = get_playlists(user, offset, count)
-        app.logger.debug("Next page: %s" % json['next'])
-        if status == 200: accum += json['items']
+    while len(queue) > 0:
+        status, result = _get_json(user, url, params=params)
+        if status != 200:
+            app.logger.error('Failed to request albums.')
+            return
 
-    return accum
+        if len(queue) == 1:
+            yield result
+            return
 
-def get_playlist(user, playlist_url):
-    """Gets a specific playlist.
-       see: https://developer.spotify.com/web-api/get-a-list-of-current-users-playlists/
-    """
-    return _get_json(user, playlist_url)
+        for item in result['albums']: yield item
+        del queue[0:limit]
+        params['ids'] = ','.join(queue[0:limit])
 
-def get_playlist_tracks(user, playlist):
-    """Gets the tracks associated with a playlist."""
-    url = playlist.tracks_url
-    code, json = _get_json(user, url)
-    return code, json
-
-def get_all_playlist_tracks(user, playlist):
-    offset = 0
+def get_artists(user, artist_ids):
     limit = 20
-    status, json = get_playlists(user, 0, limit)
-    if status != 200: return []
+    queue = list(artist_ids)
+    url = 'https://api.spotify.com/v1/artists'
+    params = {'ids':','.join(queue[0:limit])}
 
-    app.logger.debug("Next page: %s" % json['next'])
-    accum = list(json['items'])
-    total = json['total']
-    while status == 200:
-        offset += limit
-        if offset > total: break
-        count = min(total-offset, limit)
-        app.logger.debug("requesting playlists %s - %s" % (offset, offset+count))
-        status, json = get_playlists(user, offset, count)
-        app.logger.debug("Next page: %s" % json['next'])
-        if status == 200: accum += json['items']
+    while len(queue) > 0:
+        status, result = _get_json(user, url, params=params)
+        if status != 200:
+            app.logger.error('Failed to request artists.')
+            return
 
-    return accum
+        for item in result['artists']: yield item
+        del queue[0:limit]
+        params['ids'] = ','.join(queue[0:limit])
+
+def get_tracks(user, track_ids):
+    limit = 50
+    queue = list(track_ids)
+    url = 'https://api.spotify.com/v1/tracks/'
+    params = {'ids':','.join(queue[0:limit])}
+
+    while len(queue) > 0:
+        status, result = _get_json(user, url, params=params)
+        if status != 200:
+            app.logger.error('Failed to request tracks.')
+            return
+
+        for item in result['tracks']: yield item
+        del queue[0:limit]
+        params['ids'] = ','.join(queue[0:limit])
+
+def get_audio_features(user, track_ids):
+    limit = 100
+    queue = list(track_ids)
+    url = 'https://api.spotify.com/v1/audio-features/'
+    params = {'ids':','.join(queue[0:limit])}
+
+    while len(queue) > 0:
+        status, result = _get_json(user, url, params=params)
+        if status != 200:
+            app.logger.error('Failed to request features.')
+            return
+
+        for item in result['audio_features']: yield item
+        del queue[0:limit]
+        params['ids'] = ','.join(queue[0:limit])
+
+def get_audio_analysis(user, track_id):
+    status, result = _get_json(user, 'https://api.spotify.com/v1/audio-analysis/%s' % track_id)
+    if status != 200:
+        app.logger.error('Failed to request analysis.')
+        return
+
+    return result

@@ -7,6 +7,9 @@ import webbrowser
 
 import click
 import colorama
+import json
+
+import clef.spotify
 
 from colorama import Fore, Back, Style
 from clef import app, mysql
@@ -15,7 +18,6 @@ from clef.playlist import Playlist, PlaylistSummaryView
 from clef.artist import Artist
 from clef.album import Album
 from clef.track import Track
-from clef.spotify import get_all_playlists, get_playlist_tracks
 
 colorama.init(autoreset=True)
 
@@ -26,6 +28,10 @@ failed_checks = 0
 @app.cli.command('bootstrap')
 def bootstrap():
     pass
+
+#
+#  Database Commands
+#
 
 @app.cli.command()
 def initdb():
@@ -48,6 +54,24 @@ def migratedb():
             continue
 
         exec_sql_file('%s/%s' % (sql_path, file))
+
+@app.cli.command('get-user-playlists')
+@click.option('--user-id')
+def get_user_playlists(user_id):
+    """Fetches all user playlists for a user from the clef database."""
+    u = User.load(user_id)
+    show_collection(Playlist.for_user(u))
+
+@app.cli.command('get-user-playlists-summary')
+@click.option('--user-id')
+def get_user_playlists_summary(user_id):
+    """Fetches a user's playlist summary view (what's shown on the user page)."""
+    u = User.load(user_id)
+    show_collection(PlaylistSummaryView.for_user(u))
+
+#
+# Website Commands
+#
 
 @app.cli.command('spotify-dashboard', with_appcontext=False)
 def open_spotify_dashboard():
@@ -85,121 +109,188 @@ def open_portal():
     url = 'https://portal.azure.com/#@chrisbilsoncalicoenergy.onmicrosoft.com/dashboard/private/60b7336f-622f-4867-943f-f37bbbe003cd'
     webbrowser.open(url)
 
-@app.cli.command('load-playlists')
-@click.option('--user-id')
-def load_playlists(user_id):
-    """Loads playlists for one user from spotify to the database."""
-    user = User.load(user_id)
-    playlists = [Playlist.from_json(json) for json in get_all_playlists(user)]
-    for p in playlists:
-        p.save()
-        user.add_playlist(p)
-        click.echo(p.name)
-
-    mysql.connection.commit()
-    click.echo(Style.DIM + '=' * 20)
-    click.echo('Total %s for %s' % (len(playlists), user_id))
-
-@app.cli.command('get-user-playlists')
-@click.option('--user-id')
-def get_user_playlists(user_id):
-    """Fetches all user playlists for a user from the clef database."""
-    u = User.load(user_id)
-    show_collection(Playlist.for_user(u))
-
-@app.cli.command('get-user-playlists-summary')
-@click.option('--user-id')
-def get_user_playlists_summary(user_id):
-    """Fetches a user's playlist summary view (what's shown on the user page)."""
-    u = User.load(user_id)
-    show_collection(PlaylistSummaryView.for_user(u))
-
-@app.cli.command('load-all-playlist-tracks')
-@click.option('--user-id')
-@click.pass_context
-def load_all_playlist_tracks(ctx, user_id):
-    user = User.load(user_id)
-    for playlist in Playlist.for_user(user):
-        click.echo("Loading playlist %s..." % playlist.name)
-        ctx.invoke(load_playlist_tracks, user_id=user.id, playlist_id=playlist.id)
-
-@app.cli.command('load-playlist-tracks')
+#
+# Raw Spotify Commands
+#
+@app.cli.command('get-spotify-playlist')
 @click.option('--user-id')
 @click.option('--playlist-id')
-def load_playlist_tracks(user_id, playlist_id):
-    """Loads a playlist for a user from spotify and saves it to the clef database."""
+@click.option('--owner-id')
+@click.option('--fields')
+def get_spotify_playlist(user_id, playlist_id, owner_id, fields):
+    """Get a Spotify playlist by id."""
+    user = User.load(user_id)
+    playlist = clef.spotify.get_playlist(user, playlist_id, owner=owner, fields=fields)
+    mysql.connection.commit()   # in case the user's token was refreshed
+    click.echo('Result:')
+    click.echo(json.dumps(playlist, indent=2, sort_keys=True))
+
+@app.cli.command('get-spotify-user-playlists')
+@click.option('--user-id')
+def get_spotify_user_playlist(user_id):
+    """Get all Spotify playlists for a user."""
+    user = User.load(user_id)
+    count = 0
+    for playlist in clef.spotify.get_user_playlists(user):
+        click.echo(json.dumps(playlist, indent=2, sort_keys=True))
+        count += 1
+
+    mysql.connection.commit() # in case user token changed
+    click.echo('done. Total %s playlists' % count)
+
+@app.cli.command('get-spotify-playlist-tracks')
+@click.option('--user-id')
+@click.option('--playlist-id')
+def get_spotify_playlist_tracks(user_id, playlist_id):
+    """Get tracks in a Spotify playlist."""
     user = User.load(user_id)
     playlist = Playlist.load(playlist_id)
-    status, json = get_playlist_tracks(user, playlist)
-    if status != 200:
-        click.echo('Failed to get playlist tracks. %s, %s' % status, json)
-        return -1
+    if playlist is None:
+        status, result = get_playlist(user, pl_id)
+        if status != 200:
+            click.echo('failed to fetch playlist: %s, %s', (status, result))
 
-    tracks_js = [item for item in json['items'] if item['track']['id'] is not None]
-    albums_js = dict()
-    for album in [track['track']['album'] for track in tracks_js]:
-        if album['id'] is None: continue
-        if album['id'] not in albums_js:
-            albums_js[album['id']] = album
+        playlist = Playlist.from_json(result)
 
-    click.echo('Found %s different albums...' % len(albums_js))
+    count = 0
+    for track in clef.spotify.get_playlist_tracks(user, playlist):
+        click.echo(json.dumps(track, indent=2, sort_keys=True))
+        count += 1
 
-    artists_js = dict()
-    for album in albums_js.values():
-        for artist in album['artists']:
-            if artist['id'] is None: continue
-            if artist['id'] not in artists_js:
-                artists_js[artist['id']] = artist
+    mysql.connection.commit() # in case user token changed
+    click.echo('done. Total %s tracks' % count)
 
-    for track in tracks_js:
-        for artist in track['track']['artists']:
-            if artist['id'] is None: continue
-            if artist['id'] not in artists_js:
-                artists_js[artist['id']] = artist
+@app.cli.command('get-spotify-albums')
+@click.option('--user-id')
+@click.option('--album-ids', multiple=True)
+def get_spotify_albums(user_id, album_ids):
+    """Get Spotify albums by id."""
+    user = User.load(user_id)
+    count = 0
+    for album in clef.spotify.get_albums(user, album_ids):
+        click.echo(json.dumps(album, indent=2, sort_keys=True))
+        click.echo()
+        count += 1
 
-    click.echo('Found %s different artists...' % len(artists_js))
+    mysql.connection.commit()   # in case the user's token was refreshed
+    click.echo('done. Total %s albums' % count)
 
-    artists = [Artist.from_json(x) for x in artists_js.values()]
-    artists_dict = dict()
-    for artist in artists:
-        artist.save()
-        artists_dict[artist.id] = artist
+@app.cli.command('get-spotify-artists')
+@click.option('--user-id')
+@click.option('--artist-ids', multiple=True)
+def get_spotify_artists(user_id, artist_ids):
+    """Get Spotify artists by id."""
+    user = User.load(user_id)
+    count = 0
+    for artist in clef.spotify.get_artists(user, artist_ids):
+        click.echo(json.dumps(artist, indent=2, sort_keys=True))
+        click.echo()
+        count += 1
 
-    show_collection(artists)
+    mysql.connection.commit()   # in case the user's token was refreshed
+    click.echo('done. Total %s artists' % count)
 
-    albums = [Album.from_json(x) for x in albums_js.values()]
-    albums_dict = dict()
+@app.cli.command('get-spotify-tracks')
+@click.option('--user-id')
+@click.option('--track-ids', multiple=True)
+def get_spotify_tracks(user_id, track_ids):
+    """Get spotify tracks by id."""
+    user = User.load(user_id)
+    count = 0
+    for track in clef.spotify.get_tracks(user, track_ids):
+        click.echo(json.dumps(track, indent=2, sort_keys=True))
+        click.echo()
+        count += 1
 
-    for album in albums:
-        album.save()
-        albums_dict[album.id] = album
+    mysql.connection.commit()   # in case the user's token was refreshed
+    click.echo('done. Total %s tracks' % count)
 
-        for artist_id in [artist['id'] for artist in albums_js[album.id]['artists'] if id in artist]:
-            artist = artists_dict[artist_id]
-            album.add_artist(artist)
+@app.cli.command('get-spotify-audio-features')
+@click.option('--user-id')
+@click.option('--track-ids', multiple=True)
+def get_spotify_audio_features(user_id, track_ids):
+    """Get Spotify's audio features for a track.
+    See: https://beta.developer.spotify.com/documentation/web-api/reference/tracks/get-audio-features/"""
+    user = User.load(user_id)
+    count = 0
+    for features in clef.spotify.get_audio_features(user, track_ids):
+        click.echo(json.dumps(features, indent=2, sort_keys=True))
+        click.echo()
+        count += 1
 
-        # TODO: link to images
+    mysql.connection.commit()   # in case the user's token was refreshed
+    click.echo('done. Total %s tracks' % count)
 
-    show_collection(albums)
+@app.cli.command('get-spotify-audio-analysis')
+@click.option('--user-id')
+@click.option('--track-id')
+def get_spotify_audio_analysis(user_id, track_id):
+    """Get Spotify's audio analysis for a track. See: https://beta.developer.spotify.com/documentation/web-api/reference/tracks/get-audio-analysis/"""
+    user = User.load(user_id)
+    count = 0
+    analysis = clef.spotify.get_audio_analysis(user, track_id)
+    click.echo('{')
 
-    tracks = list()
-    for track_js in tracks_js:
-        track = Track.from_json(track_js['track'])
-        click.echo('%s' % track)
-        track.save()
-        tracks.append(track)
+    click.echo('"bars": [')
+    for bar in analysis['bars']:
+        click.echo('\t%s' % json.dumps(bar))
+    click.echo('],')
 
-        if 'added_by' in track_js and track_js['added_by'] is not None:
-            added_by = track_js['added_by']['id']
-            playlist.add_track(track, track_js['added_at'], added_by)
+    click.echo('"beats": [')
+    for beat in analysis['beats']:
+        click.echo('\t%s' % json.dumps(beat))
+    click.echo('],')
 
-        for artist_id in [artist['id'] for artist in track_js['track']['artists'] if id in artist]:
-            artist = artists_dict[artist_id]
-            track.add_artist(artist)
+    click.echo('"sections": [')
+    for section in analysis['sections']:
+        click.echo('\t%s' % json.dumps(section))
+    click.echo('],')
 
-    show_collection(tracks)
+    click.echo('"segments": [')
+    for segment in analysis['segments']:
+        click.echo('\t%s' % json.dumps(segment))
+    click.echo('],')
 
+    click.echo('"tatums": [')
+    for tatum in analysis['tatums']:
+        click.echo('\t%s' % json.dumps(tatum))
+    click.echo('],')
+
+    click.echo('"track": %s,' % json.dumps(analysis['track'], indent=2, sort_keys=True))
+    click.echo()
+    click.echo('"meta": %s,' % json.dumps(analysis['meta'], indent=2, sort_keys=True))
+
+    click.echo('}')
+
+    mysql.connection.commit()   # in case the user's token was refreshed
+
+#
+# Import Commands
+#
+
+@app.cli.command('import-user-playlists')
+@click.option('--user-id')
+def import_user_playlists(user_id):
+    """Imports all of a user's playlists from spotify, regardless if they have been changed or not."""
+    user = User.load(user_id)
+    t, al, ar = Playlist.import_user_playlists(user)
     mysql.connection.commit()
+    click.echo('done. %s tracks, %s albums, %s artists.' % (t, al, ar))
+
+@app.cli.command('import-user-playlist')
+@click.option('--user-id')
+@click.option('--playlist-id')
+@click.option('--force')
+def import_user_playlist(user_id, playlist_id, force=False):
+    """Imports a single user playlist from spotify, regardless if it has been changed or not."""
+    user = User.load(user_id)
+    t, al, ar = Playlist.import_user_playlist(user, playlist_id)
+    mysql.connection.commit()
+    click.echo('done. %s tracks, %s albums, %s artists.' % (t, al, ar))
+
+#
+# Testing Commands
+#
 
 @app.cli.command('preflight-check')
 def preflight_check():

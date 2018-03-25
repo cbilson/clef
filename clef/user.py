@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timedelta
 from clef import mysql, app
 
@@ -64,10 +65,13 @@ class User:
     def token_refreshed(self, response_json):
         self.access_token = response_json['access_token']
         self.token_expiration = datetime.utcnow() + timedelta(seconds=response_json['expires_in'])
+        app.logger.debug('user %s token refreshed, token_expiration: %s' % (self.id, self.token_expiration))
 
         if 'refresh_token' in response_json.keys():
+            app.logger.debug('refresh_token updated')
             self.refresh_token = response_json['refresh_token']
-            self.save()
+
+        self.save()
 
     def add_playlist(self, playlist):
         cursor = mysql.connection.cursor()

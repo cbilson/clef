@@ -42,12 +42,11 @@ create table PlaylistFollow(
 drop table if exists Playlist;
 create table Playlist(
        id char(32) primary key,
-       href varchar(255),
        owner char(100), -- references User.id,
        name varchar(100),
+       description varchar(255),
        public boolean,
-       snapshot_id varchar(128),
-       tracks_url varchar(255));
+       snapshot_id varchar(128));
 
 drop table if exists PlaylistImage;
 create table PlaylistImage(
@@ -62,20 +61,51 @@ create table Artist(
        id char(32) primary key,
        type varchar(20),
        name varchar(100),
-       href varchar(255));
+       followers int,
+       popularity int);
+
+drop table if exists ArtistImage;
+create table ArtistImage(
+       artist_id char(32) references Artist.id,
+       height int,
+       width int,
+       url varchar(255),
+       unique key (artist_id, url));
+
+drop table if exists ArtistGenre;
+create table ArtistGenre(
+       artist_id char(32) references Artist.id,
+       genre varchar(50) not null,
+       unique key (artist_id, genre));
 
 drop table if exists Album;
 create table Album(
        id char(32) primary key,
+       name varchar(255),
+       label varchar(255),
        album_type varchar(20),
-       href varchar(255),
-       name varchar(255));
+       popularity int,
+       release_date date);
 
 drop table if exists AlbumArtist;
 create table AlbumArtist(
        album_id char(32) references Album.id,
        artist_id char(32) references Artist.id,
        unique key (album_id, artist_id));
+
+drop table if exists AlbumImage;
+create table AlbumImage(
+       album_id char(32) references Album.id,
+       width int,
+       height int,
+       url varchar(255),
+       unique key (album_id, url));
+
+drop table if exists AlbumGenre;
+create table AlbumGenre(
+       album_id char(32) references Album.id,
+       genre varchar(50) not null,
+       unique key (album_id, genre));
 
 drop table if exists Track;
 create table Track(
@@ -86,7 +116,6 @@ create table Track(
        disc_number int,
        duration_ms int,
        explicit boolean,
-       href varchar(255),
        popularity int);
 
 drop table if exists TrackArtist;

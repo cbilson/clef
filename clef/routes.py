@@ -1,7 +1,7 @@
 import base64, json, os, requests
 from urllib.parse import unquote
 from flask import render_template, request, session, redirect, url_for
-from clef.spotify import get_auth_url, get_auth_token, get_user, get_playlists
+from clef.spotify import get_auth_url, get_auth_token, get_user, get_user_playlists
 from clef.user import User
 from clef.playlist import Playlist, PlaylistSummaryView
 from clef.helpers import dump_session
@@ -42,7 +42,7 @@ def user(id):
             app.logger.info('User %s is logged in.' % user.id)
             playlists = PlaylistSummaryView.for_user(user)
             # Check to see if the user profile is stale
-            return render_template('user.html', user=user, target_user=target_user, playlists=playlists)
+            return render_template('user.html', user=user, playlists=playlists)
 
         app.logger.warn('User %s not found in database.' % user_id)
     else:
@@ -54,20 +54,10 @@ def user(id):
 def refresh(user_id):
     if 'user_id' not in session: abort(401)
     if session['user_id'] != user_id: abort(403)
-
-    # TODO: this should just return a token that the page can poll for
-    # status changes, or use a web socket. When the work is complete the
-    # page could then highlight the changed playlists.
     user = User.load(user_id)
-    result = Playlist.refresh(user)
-
+    refresh_result = Playlist.refresh(user)
     playlists = PlaylistSummaryView.for_user(user)
-
-    # TODO: update the is_deleted, is_... for playlists based on result
-    
-    # TODO: should render a widget with just the list items for the new
-    # set of playlists
-    return render_template('user.html')
+    return render_template('user.html', playlists=playlists, refresh=refresh_result)
 
 @app.route('/authorized')
 def authorized():

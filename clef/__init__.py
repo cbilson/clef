@@ -1,4 +1,4 @@
-import os
+import os, sys, logging
 from logging import StreamHandler, Formatter
 from logging.handlers import RotatingFileHandler
 from flask import Flask
@@ -6,15 +6,24 @@ from flask_mysqldb import MySQL
 from traitlets.config import Config
 
 app = Flask(__name__)
-app.logger.info('App listening on port %s' % os.getenv('HTTP_PLATFORM_PORT'))
+app.logger.handlers.clear()
+
+console = StreamHandler(sys.stdout)
+console.setLevel(logging.DEBUG)
+console.setFormatter(Formatter('%(levelname)s: %(message)s -- %(module)s L%(lineno)s'))
+app.logger.addHandler(console)
 
 if (os.getenv('DEBUG')):
     app.config.update(DEBUG = True)
 
 log_path = os.getenv('LOG_PATH')
 if log_path:
-    app.logger.info('Adding RotatingFileHandler logging to %s/app.log' % log_path)
-    app.logger.addHandler(RotatingFileHandler(log_path + '/app.log', maxBytes = 1*1024*1024, backupCount = 100))
+    app.logger.info('Adding RotatingFileHandler logging to %s/clef.log' % log_path)
+    file_handler = RotatingFileHandler(log_path + '/clef.log', maxBytes = 1*1024*1024, backupCount = 100)
+    file_handler.setFormatter(Formatter('%(asctime)s %(levelname)s: %(message)s -- %(module)s L%(lineno)s'))
+    app.logger.addHandler(file_handler)
+
+app.logger.info('App listening on port %s' % os.getenv('HTTP_PLATFORM_PORT'))
 
 secret_key = os.getenv('SECRET_KEY')
 if not secret_key:
