@@ -203,7 +203,7 @@ def get_albums(user, album_ids, fields=DEFAULT_ALBUM_FIELDS):
             return
 
         if len(queue) == 1:
-            yield result
+            yield result['albums'][0]
             return
 
         for item in result['albums']: yield item
