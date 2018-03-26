@@ -67,6 +67,13 @@ class Playlist:
                        'added_at=%s, added_by=%s',
                        (self.id, track.id, added_at, added_by, added_at, added_by))
 
+    def remove_track(self, track):
+        app.logger.debug('Removing track %s to playlist %s' % (track.id, self.id))
+        cursor = mysql.connection.cursor()
+        cursor.execute('delete from PlaylistTrack '
+                       'where playlist_id = %s and track_id = %s ',
+                       (self.id, track.id))
+
     def save(self):
         cursor = mysql.connection.cursor()
         cursor.execute(
@@ -91,8 +98,18 @@ class Playlist:
         track_albums = []
         track_artists = []
         items_js = [item for item in spotify.get_playlist_tracks(user, pl)]
+
         tracks_js = [item['track'] for item in items_js]
-        track_ids = [track['id'] for track in tracks_js if track['id'] not in tracks]
+        track_ids = {track['id'] for track in tracks_js if track['id'] not in tracks}
+
+        # remove any tracks no longer in the playlist
+        existing_tracks = list(Track.for_playlist(pl))
+        app.logger.debug("existing tracks in %s: %s" % (pl.id, len(existing_tracks)))
+        for existing_track in Track.for_playlist(pl):
+            if existing_track.id not in track_ids:
+                app.logger.debug('removing %s from %s' % (existing_track.id, pl.id))
+                pl.remove_track(existing_track)
+
         tracks.update(Track.load_many(track_ids))
         for track_js in tracks_js:
             if track_js['id'] in tracks: continue
@@ -182,7 +199,7 @@ class Playlist:
                 snapshot_id = playlist_item_js['snapshot_id']
                 pl = Playlist.load(pl_id)
                 if pl is not None and pl.snapshot_id == snapshot_id and not force_reimport:
-                    app.logger.debug('playlist unchanged (snapshot_id: %s). Force re-importing.' % pl.snapshot_id)
+                    app.logger.debug('playlist unchanged (snapshot_id: %s).' % pl.snapshot_id)
                 else:
                     if pl is None:
                         app.logger.debug('new playlist %s' % pl_id)

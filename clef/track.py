@@ -47,11 +47,11 @@ class Track:
 
     def for_playlist(playlist):
         cursor = mysql.connection.cursor()
-        cursor.execute('select id, name, type, '
-                       'album_id, disc_number, duration_ms, '
-                       'explicit, popularity '
-                       'from Track '
-                       ' inner join PlaylistTrack pt on track_id = pt.track_id '
+        cursor.execute('select t.id, t.name, t.type, '
+                       't.album_id, t.disc_number, t.duration_ms, '
+                       't.explicit, t.popularity '
+                       'from Track t '
+                       ' inner join PlaylistTrack pt on t.id = pt.track_id '
                        'where pt.playlist_id = %s',
                        (playlist.id,))
         return [Track._from_row(row) for row in cursor]
