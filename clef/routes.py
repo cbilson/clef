@@ -1,4 +1,5 @@
 import base64, json, os, requests
+from datetime import datetime, timedelta
 from urllib.parse import unquote
 from flask import render_template, get_template_attribute, request, session, redirect, url_for, jsonify
 from clef.spotify import get_auth_url, get_auth_token, get_user, get_user_playlists
@@ -41,7 +42,6 @@ def user(id):
             if id != user.id: abort(403)
             app.logger.info('User %s is logged in.' % user.id)
             playlists = PlaylistSummaryView.for_user(user)
-            app.logger.debug(playlists)
             return render_template('user-overview.html', user=user, playlists=playlists)
 
         app.logger.warn('User %s not found in database.' % user_id)
@@ -100,8 +100,13 @@ def authorized():
     if not user:
         app.logger.info('Creating new user record for user id %s' % spotify_user['id'])
         user = User.from_json(spotify_user, token)
-        user.save()
-        mysql.connection.commit()
+    else:
+        user.access_token = token['access_token']
+        user.token_expiration = datetime.utcnow() + timedelta(seconds=token['expires_in'])
+        user.refresh_token = token['refresh_token']
+
+    user.save()
+    mysql.connection.commit()
 
     user_url = '/user/%s/overview' % user.id
     session['user_id'] = user.id

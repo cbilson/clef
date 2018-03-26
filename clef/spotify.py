@@ -86,6 +86,7 @@ def refresh_user_access_token(user):
     result = None
 
     if resp.status_code != 200:
+        app.logger.error('failed to renew access token: %s' % json)
         result = 'Failed to get token.'
         if 'error_description' in json:
             result = json['error_description']
