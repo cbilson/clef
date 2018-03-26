@@ -13,8 +13,8 @@ console.setLevel(logging.DEBUG)
 console.setFormatter(Formatter('%(levelname)s: %(message)s -- %(module)s L%(lineno)s'))
 app.logger.addHandler(console)
 
-if (os.getenv('DEBUG')):
-    app.config.update(DEBUG = True)
+#if (os.getenv('DEBUG')):
+app.config.update(DEBUG = True)
 
 log_path = os.getenv('LOG_PATH')
 if log_path:
