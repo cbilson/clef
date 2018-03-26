@@ -60,7 +60,7 @@ def refresh(user_id):
     user = User.load(user_id)
     refresh_result = Playlist.import_user_playlists(user)
     playlists = PlaylistSummaryView.for_user(user)
-    return render_template('user-overview.html', playlists=playlists, refresh=refresh_result)
+    return render_template('user-overview.html', user=user, playlists=playlists, refresh=refresh_result)
 
 @app.route('/authorized')
 def authorized():
