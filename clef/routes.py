@@ -2,7 +2,7 @@ import base64, json, os, requests
 from urllib.parse import unquote
 from flask import render_template, get_template_attribute, request, session, redirect, url_for, jsonify
 from clef.spotify import get_auth_url, get_auth_token, get_user, get_user_playlists
-from clef.user import User
+from clef.user import User, UserArtistOverview
 from clef.playlist import Playlist, PlaylistSummaryView
 from clef.helpers import dump_session
 from clef import app, mysql
@@ -62,6 +62,14 @@ def refresh(user_id):
     mysql.connection.commit()
     playlists = PlaylistSummaryView.for_user(user)
     return jsonify([p.__dict__ for p in playlists])
+
+@app.route('/user/<user_id>/artists')
+def artists(user_id):
+    if 'user_id' not in session: abort(401)
+    if session['user_id'] != user_id: abort(403)
+    user = User.load(user_id)
+    artists = list(UserArtistOverview.for_user(user))
+    return render_template('user-artist-summary.html', user=user, artists=artists)
 
 @app.route('/authorized')
 def authorized():

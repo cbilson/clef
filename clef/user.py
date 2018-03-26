@@ -110,3 +110,39 @@ class User:
             return self.name
 
         return self.email
+
+class UserArtistOverview:
+    def for_user(user):
+        cursor = mysql.connection.cursor()
+        cursor.execute('SELECT T6.Users_Artists AS Users_Artists, COUNT(*) - 1 AS Number_of_Songs_by_the_Artist '
+                       'FROM ('
+                       'SELECT DISTINCT artist.name AS Users_Artists '
+                       'FROM albumartist, artist '
+                       'WHERE album_id IN ( '
+                       'SELECT album_id '
+                       'FROM track '
+                       'WHERE track.id IN ( '
+                       'SELECT DISTINCT track_id '
+                       'FROM playlisttrack '
+                       'WHERE playlisttrack.playlist_id IN ( '
+                       'SELECT DISTINCT id AS playlist_id '
+                       'FROM playlist '
+                       'WHERE playlist.owner = %s))) AND albumartist.artist_id = artist.id '
+                       'UNION ALL '
+                       'SELECT artist.name AS Users_Artists '
+                       'FROM albumartist, artist '
+                       'WHERE album_id IN ( '
+                       'SELECT album_id '
+                       'FROM track '
+                       'WHERE track.id IN ( '
+                       'SELECT track_id '
+                       'FROM playlisttrack '
+                       'WHERE playlisttrack.playlist_id IN ( '
+                       'SELECT DISTINCT id AS playlist_id '
+                       'FROM playlist '
+                       'WHERE playlist.owner = %s))) AND albumartist.artist_id = artist.id '
+                       ') AS T6 '
+                       'GROUP BY T6.Users_Artists',
+                       (user.id, user.id))
+
+        return [(row[0], row[1]) for row in cursor]
