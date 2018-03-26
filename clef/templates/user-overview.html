@@ -1,6 +1,23 @@
 {% extends "layout.html" %}
+{% block head %}
+<style>
+ #playlistCover {max-width: 240px;}
+</style>
+{% endblock %}
 {% block nav %}
-<li><a id="refreshData" href="#">Refresh My Data</a></li>
+<li>
+  <div id="refreshSpinner" class="preloader-wrapper small active hide">
+    <div class="spinner-layer spinner-green-only">
+      <div class="circle-clipper left">
+        <div class="circle"></div>
+      </div><div class="gap-patch">
+        <div class="circle"></div>
+      </div><div class="circle-clipper right">
+        <div class="circle"></div>
+      </div>
+    </div>
+  </div><a id="refreshData" href="#">Refresh My Data</a>
+</li>
 <li><a id="my-artists.html" href="#">My Artists</a></li>
 <li><a id="compare-to.html?id=cbilson" href="#">Compare with cbilson</a></li>
 {% endblock %}
@@ -36,9 +53,11 @@
  refreshData.addEventListener('click', function(e) {
    if (refreshData.classList.contains('disabled')) { return; }
    refreshData.classList.add('disabled');
+   document.getElementById('refreshSpinner').classList.remove('hide');
    var xhr = new XMLHttpRequest();
    xhr.open('POST', 'refresh');
    xhr.onload = function() {
+     document.getElementById('refreshSpinner').classList.add('hide');
      if (xhr.status == 200) {
        var playlists = JSON.parse(xhr.responseText);
        var template = document.getElementById('playlistItemTemplate').cloneNode(true);
