@@ -132,7 +132,7 @@ def open_portal():
 def get_spotify_playlist(user_id, playlist_id, owner_id, fields):
     """Get a Spotify playlist by id."""
     user = User.load(user_id)
-    playlist = clef.spotify.get_playlist(user, playlist_id, owner=owner, fields=fields)
+    playlist = clef.spotify.get_playlist(user, playlist_id, owner=owner_id, fields=fields)
     mysql.connection.commit()   # in case the user's token was refreshed
     click.echo('Result:')
     click.echo(json.dumps(playlist, indent=2, sort_keys=True))
