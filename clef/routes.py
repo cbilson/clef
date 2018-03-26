@@ -5,7 +5,7 @@ from clef.spotify import get_auth_url, get_auth_token, get_user, get_user_playli
 from clef.user import User
 from clef.playlist import Playlist, PlaylistSummaryView
 from clef.helpers import dump_session
-from clef import app
+from clef import app, mysql
 
 @app.errorhandler(401)
 def custom_401(error):
@@ -92,6 +92,7 @@ def authorized():
         app.logger.info('Creating new user record for user id %s' % spotify_user['id'])
         user = User.from_json(spotify_user, token)
         user.save()
+        mysql.connection.commit()
 
     user_url = '/user/%s/overview' % user.id
     session['user_id'] = user.id
