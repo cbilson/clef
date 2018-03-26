@@ -290,6 +290,23 @@ def import_user_playlists(user_id):
     mysql.connection.commit()
     click.echo('done. %s tracks, %s albums, %s artists.' % (t, al, ar))
 
+@app.cli.command('import-playlist-images')
+@click.option('--user-id')
+def import_playlist_images(user_id):
+    """Imports images for all of a user's playlists. This is to mitigate an issue with the normal import process."""
+    user = User.load(user_id)
+    image_count = 0
+    playlist_count = 0
+    for playlist in Playlist.for_user(user):
+        playlist_count += 1
+        spotify_playlist = spotify.get_playlist(user, playlist.id, playlist.owner, fields='id,images')
+        for image in spotify_playlist['images']:
+            playlist.add_image(image['width'], image['height'], image['url'])
+            image_count += 1
+
+    mysql.connection.commit()
+    click.echo('done. %s playlists, %s images.' % (playlist_count, image_count))
+
 @app.cli.command('import-user-playlist')
 @click.option('--user-id')
 @click.option('--playlist-id')

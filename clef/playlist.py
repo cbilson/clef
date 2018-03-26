@@ -74,6 +74,15 @@ class Playlist:
                        'where playlist_id = %s and track_id = %s ',
                        (self.id, track.id))
 
+    def add_image(self, width, height, url):
+        cursor = mysql.connection.cursor()
+        cursor.execute('insert into PlaylistImage(playlist_id, width, height, url) '
+                       'values(%s,%s,%s,%s) '
+                       'on duplicate key update '
+                       'width=%s, height=%s, url=%s',
+                       (self.id, width, height, url,
+                        width, height, url))
+
     def save(self):
         cursor = mysql.connection.cursor()
         cursor.execute(
