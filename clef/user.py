@@ -104,3 +104,9 @@ class User:
                         self.access_token, self.token_expiration,
                         self.refresh_token))
         app.logger.info('User %s updated' % self.id)
+
+    def display_name(self):
+        if self.name is not None:
+            return self.name
+
+        return self.email
