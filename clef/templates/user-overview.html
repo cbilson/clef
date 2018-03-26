@@ -8,6 +8,7 @@
 <h1>{{user.id}}</h1>
 <h5>Your Playlists</h5>
 <ul id="playlists">
+  <li id="playlistItemTemplate" class="hide">TEMPLATE</li>
   {% for playlist in playlists %}
   <li>{{playlist.name}} ({{playlist.track_count}} tracks)</li>
   {% endfor %}
@@ -24,8 +25,22 @@
    xhr.open('POST', 'refresh');
    xhr.onload = function() {
      if (xhr.status == 200) {
-       playlistHtml.innerHTML = xhr.responseText;
+       var playlists = JSON.parse(xhr.responseText);
+       var template = document.getElementById('playlistItemTemplate').cloneNode(true);
+       while (playlistsHtml.firstChild)
+         playlistsHtml.removeChild(playlistsHtml.firstChild);
+
+       playlistsHtml.appendChild(template);
+
+       for (var i = 0; i < playlists.length; i++) {
+         var li = template.cloneNode();
+         li.removeAttribute('id');
+         li.classList.remove('hide');
+         li.innerText = playlists[i].name + ' (' + playlists[i].track_count + ' tracks)';
+         playlistsHtml.appendChild(li);
+       }
      }
+
      refreshData.classList.remove('disabled');
    }
 

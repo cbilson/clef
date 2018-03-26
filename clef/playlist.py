@@ -191,14 +191,19 @@ class Playlist:
                     else:
                         app.logger.debug('force_reimport')
 
-                    try:
-                        pl, tc, alc, arc = Playlist.import_playlist(user, pl_id, owner_id, albums,  artists, tracks)
-                        new_track_count += tc
-                        new_album_count += alc
-                        new_artist_count += arc
-                    except:
-                        e = sys.exc_info()[0]
-                        app.logger.error('Failed to import playlist %s: %s' % (pl_id, e))
+                    pl, tc, alc, arc = Playlist.import_playlist(user, pl_id, owner_id, albums,  artists, tracks)
+                    new_track_count += tc
+                    new_album_count += alc
+                    new_artist_count += arc
+
+                    # try:
+                    #     pl, tc, alc, arc = Playlist.import_playlist(user, pl_id, owner_id, albums,  artists, tracks)
+                    #     new_track_count += tc
+                    #     new_album_count += alc
+                    #     new_artist_count += arc
+                    # except:
+                    #     e = sys.exc_info()[0]
+                    #     app.logger.error('Failed to import playlist %s: %s' % (pl_id, e))
 
                 app.logger.debug('adding follow of %s to user %s' % (pl.id, user.id))
                 user.add_playlist(pl)

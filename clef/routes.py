@@ -1,6 +1,6 @@
 import base64, json, os, requests
 from urllib.parse import unquote
-from flask import render_template, request, session, redirect, url_for
+from flask import render_template, get_template_attribute, request, session, redirect, url_for, jsonify
 from clef.spotify import get_auth_url, get_auth_token, get_user, get_user_playlists
 from clef.user import User
 from clef.playlist import Playlist, PlaylistSummaryView
@@ -41,7 +41,7 @@ def user(id):
             if id != user.id: abort(403)
             app.logger.info('User %s is logged in.' % user.id)
             playlists = PlaylistSummaryView.for_user(user)
-            # Check to see if the user profile is stale
+            app.logger.debug(playlists)
             return render_template('user-overview.html', user=user, playlists=playlists)
 
         app.logger.warn('User %s not found in database.' % user_id)
@@ -61,7 +61,7 @@ def refresh(user_id):
     refresh_result = Playlist.import_user_playlists(user)
     mysql.connection.commit()
     playlists = PlaylistSummaryView.for_user(user)
-    return render_template('user-overview.html', user=user, playlists=playlists, refresh=refresh_result)
+    return jsonify([p.__dict__ for p in playlists])
 
 @app.route('/authorized')
 def authorized():
