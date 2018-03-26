@@ -59,6 +59,7 @@ def refresh(user_id):
     if session['user_id'] != user_id: abort(403)
     user = User.load(user_id)
     refresh_result = Playlist.import_user_playlists(user)
+    mysql.connection.commit()
     playlists = PlaylistSummaryView.for_user(user)
     return render_template('user-overview.html', user=user, playlists=playlists, refresh=refresh_result)
 

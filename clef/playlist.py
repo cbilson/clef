@@ -153,7 +153,6 @@ class Playlist:
 
         app.logger.debug("linking tracks and playlists")
         for item_js in items_js:
-            app.logger.debug('item_js: %s' % json.dumps(item_js))
             added_by = None if 'added_by' not in items_js or item_js['added_by'] is None else item_js['added_by']['id']
             pl.add_track(tracks[item_js['track']['id']], item_js['added_at'], added_by)
 
