@@ -57,6 +57,7 @@ class Artist:
 
     def load_many(ids):
         params = ','.join(['%s'] * len(ids))
+        app.logger.debug('Artist.load_many: %s artists, [%s]' % (len(ids), ids))
         cursor = mysql.connection.cursor()
         cursor.execute('select id, name, type, followers, popularity '
                        'from Artist '

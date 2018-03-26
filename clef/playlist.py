@@ -175,7 +175,7 @@ class Playlist:
 
         return pl, new_track_count, new_album_count, new_artist_count
 
-    def _import_user_playlists(user, playlist_id=None, force_reimport=False):
+    def _import_user_playlists(user, playlist_id=None, force_reimport=False, continue_on_error=True):
         """
         Imports a set of playlists for a user.
         Returns the number of tracks, albums, and artists added.
@@ -207,23 +207,23 @@ class Playlist:
                         app.logger.debug('stale: old snapshot_id %s, new snapshot_id %s' % (pl.snapshot_id, snapshot_id))
                     else:
                         app.logger.debug('force_reimport')
+                    try:
+                        pl, tc, alc, arc = Playlist.import_playlist(user, pl_id, owner_id, albums,  artists, tracks)
+                        new_track_count += tc
+                        new_album_count += alc
+                        new_artist_count += arc
+                    except:
+                        e = sys.exc_info()[0]
+                        app.logger.error('Failed to import playlist %s: %s' % (pl_id, e))
+                        if not continue_on_error: raise
 
-                    pl, tc, alc, arc = Playlist.import_playlist(user, pl_id, owner_id, albums,  artists, tracks)
-                    new_track_count += tc
-                    new_album_count += alc
-                    new_artist_count += arc
-
-                    # try:
-                    #     pl, tc, alc, arc = Playlist.import_playlist(user, pl_id, owner_id, albums,  artists, tracks)
-                    #     new_track_count += tc
-                    #     new_album_count += alc
-                    #     new_artist_count += arc
-                    # except:
-                    #     e = sys.exc_info()[0]
-                    #     app.logger.error('Failed to import playlist %s: %s' % (pl_id, e))
-
-                app.logger.debug('adding follow of %s to user %s' % (pl.id, user.id))
-                user.add_playlist(pl)
+                if pl is None:
+                    app.logger.warn('no playlist %s loaded, so not adding follow for user %s' % (pl_id, user.id))
+                elif user is None:
+                    app.logger.warn('no user loaded, so not adding follow of playlist %s' % (pl.id))
+                else:
+                    app.logger.debug('adding follow of %s to user %s' % (pl.id, user.id))
+                    user.add_playlist(pl)
 
         app.logger.debug('total tracks: %s, albums: %s, artists: %s' % (len(tracks), len(albums), len(artists)))
         return new_track_count, new_album_count, new_artist_count
