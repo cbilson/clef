@@ -234,35 +234,6 @@ class Playlist:
             'delete from Playlist where id = %s',
             (playlist_id,))
 
-    def refresh(user):
-        """Refreshes playlists in our database with data from spotify."""
-        original_playlists = {pl.id:pl for pl in Playlist.for_user(user)}
-        spotify_playlists = [Playlist.from_json(js) for js in get_all_playlists(user)]
-        current_playlists = {pl.id:pl for pl in spotify_playlists}
-        deleted_playlists = [pl for pl in original_playlists.values() if pl.id not in current_playlists]
-        keep_playlists = [pl for pl in original_playlists.values() if pl.id in current_playlists]
-        updated_playlists = [pl for pl in keep_playlists if pl.snapshot_id != current_playlists[pl.id].snapshot_id]
-        new_playlists = [pl for pl in current_playlists.values() if pl.id not in original_playlists]
-        result = PlaylistRefreshResults(
-            [pl.id for pl in new_playlists],
-            [pl.id for pl in updated_playlists],
-            [pl.id for pl in deleted_playlists])
-
-        app.logger.debug('original: %s, current: %s, deleted: %s, updated: %s, new: %s',
-                         len(original_playlists), len(current_playlists), len(deleted_playlists),
-                         len(updated_playlists), len(new_playlists))
-
-        for pl in deleted_playlists:
-            app.logger.debug('removing %s' % pl)
-            user.remove_playlist(pl)
-
-        t, al, ar = Playlist._import_user_playlists(user, result.updated_playlists + result.new_playlists)
-        result.track_count = t
-        result.artist_count = ar
-        result.album_count = al
-
-        return result
-
 class PlaylistRefreshResults:
     def __init__(self, new=[], updated=[], deleted=[], track_count=0, artist_count=0, album_count=0):
         self.new = new

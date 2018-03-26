@@ -29,7 +29,7 @@ def login():
     app.logger.info('url: %s', authorize_url)
     return redirect(authorize_url)
 
-@app.route('/user/<id>')
+@app.route('/user/<id>/overview')
 def user(id):
     app.logger.debug('/user/%s' % id)
     if 'user_id' in session:
@@ -42,7 +42,7 @@ def user(id):
             app.logger.info('User %s is logged in.' % user.id)
             playlists = PlaylistSummaryView.for_user(user)
             # Check to see if the user profile is stale
-            return render_template('user.html', user=user, playlists=playlists)
+            return render_template('user-overview.html', user=user, playlists=playlists)
 
         app.logger.warn('User %s not found in database.' % user_id)
     else:
@@ -58,9 +58,9 @@ def refresh(user_id):
     if 'user_id' not in session: abort(401)
     if session['user_id'] != user_id: abort(403)
     user = User.load(user_id)
-    refresh_result = Playlist.refresh(user)
+    refresh_result = Playlist.import_user_playlists(user)
     playlists = PlaylistSummaryView.for_user(user)
-    return render_template('user.html', playlists=playlists, refresh=refresh_result)
+    return render_template('user-overview.html', playlists=playlists, refresh=refresh_result)
 
 @app.route('/authorized')
 def authorized():
@@ -93,7 +93,7 @@ def authorized():
         user = User.from_json(spotify_user, token)
         user.save()
 
-    user_url = '/user/%s' % user.id
+    user_url = '/user/%s/overview' % user.id
     session['user_id'] = user.id
     session.modified = True
     app.logger.info('redirecting to %s with session set to user_id %s' % (user_url, session['user_id']))
