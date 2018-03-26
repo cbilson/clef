@@ -29,11 +29,9 @@
   <div class="col s8">
     <h5>Your Playlists</h5>
     <ul id="playlists">
-      <li id="playlistItemTemplate" class="hide">TEMPLATE</li>
+      <li id="playlistItemTemplate" class="track hide">TEMPLATE</li>
       {% for playlist in playlists %}
-      <li data-cover-url="{{playlist.image_url}}"
-          data-cover-width="{{playlist.image_width}}"
-          data-cover-height="{{playlist.image_height}}">
+      <li class="track" data-cover-url="{{playlist.image_url}}">
         {{playlist.name}} ({{playlist.track_count}} tracks)
       </li>
       {% endfor %}
