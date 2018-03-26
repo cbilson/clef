@@ -5,19 +5,34 @@
 <li><a id="compare-to.html?id=cbilson" href="#">Compare with cbilson</a></li>
 {% endblock %}
 {% block body %}
-<h1>{{user.display_name()}}</h1>
-<h5>Your Playlists</h5>
-<ul id="playlists">
-  <li id="playlistItemTemplate" class="hide">TEMPLATE</li>
-  {% for playlist in playlists %}
-  <li>{{playlist.name}} ({{playlist.track_count}} tracks)</li>
-  {% endfor %}
-</ul>
+<div class="row">
+  <h1>{{user.display_name()}}</h1>
+</div>
+<div class="row">
+  <div class="col s8">
+    <h5>Your Playlists</h5>
+    <ul id="playlists">
+      <li id="playlistItemTemplate" class="hide">TEMPLATE</li>
+      {% for playlist in playlists %}
+      <li data-cover-url="{{playlist.image_url}}"
+          data-cover-width="{{playlist.image_width}}"
+          data-cover-height="{{playlist.image_height}}">
+        {{playlist.name}} ({{playlist.track_count}} tracks)
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  <div class="col s4">
+    <img id="playlistCover">
+  </div>
+</div>
 {% endblock %}
 {% block scripts %}
 <script>
  var refreshData = document.getElementById('refreshData');
  var playlistsHtml = document.getElementById('playlists');
+ var playlistCover = document.getElementById('playlistCover');
+
  refreshData.addEventListener('click', function(e) {
    if (refreshData.classList.contains('disabled')) { return; }
    refreshData.classList.add('disabled');
@@ -37,6 +52,8 @@
          li.removeAttribute('id');
          li.classList.remove('hide');
          li.innerText = playlists[i].name + ' (' + playlists[i].track_count + ' tracks)';
+         li.addEventListener('mouseenter', mouseEnterPlaylistItem);
+         li.addEventListener('mouseleave', mouseLeavePlaylistItem);
          playlistsHtml.appendChild(li);
        }
      }
@@ -46,5 +63,19 @@
 
    xhr.send();
  });
+
+ function mouseEnterPlaylistItem(item) {
+   playlistCover.setAttribute('src', item.target.dataset.coverUrl);
+ }
+
+ function mouseLeavePlaylistItem(item) {
+   playlistCover.setAttribute('src', '');
+ }
+
+ playlistItems = playlistsHtml.children;
+ for (var i = 0; i < playlistItems.length; i++) {
+   playlistItems[i].addEventListener('mouseenter', mouseEnterPlaylistItem);
+   playlistItems[i].addEventListener('mouseleave', mouseLeavePlaylistItem);
+ }
 </script>
 {% endblock %}

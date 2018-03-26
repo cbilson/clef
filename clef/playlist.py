@@ -281,26 +281,29 @@ class PlaylistRefreshResults:
                 % (new, updated, deleted, self.track_count, self.artist_count, self.album_count))
 
 class PlaylistSummaryView:
-    def __init__(self, id, name, track_count, is_new=False, is_deleted=False, is_updated=False):
+    def __init__(self, id, name, track_count, image_width, image_height, image_url):
         self.id = id
         self.name = name
         self.track_count = track_count
-        self.is_new = False
-        self.is_deleted = False
-        self.is_updated = False
+        self.image_width = image_width
+        self.image_height = image_height
+        self.image_url = image_url
 
     def __repr__(self):
-        return ('PlaylistSummaryView(id="%s", name="%s", track_count=%s, is_new=%s, is_deleted=%s, is_updated=%s)'
-                % (self.id, self.name, self.track_count, self.is_new, self.is_deleted, self.is_updated))
+        return ('PlaylistSummaryView(id="%s", name="%s", track_count=%s, image_width=%s, image_height=%s, image_url="%s")'
+                % (self.id, self.name, self.track_count, self.image_width, self.image_height, self.image_url))
 
     def for_user(user):
         cursor = mysql.connection.cursor()
         cursor.execute(
-            'select p.id, p.name, count(*) '
-            'from Playlist p '
-            '  inner join PlaylistFollow pf on p.id = pf.playlist_id '
-            '  inner join PlaylistTrack pt on p.id = pt.playlist_id '
-            'where pf.user_id=%s '
-            'group by p.id',
+            'select          p.id, p.name, pi.width, pi.height, pi.width * pi.height as img_area, pi.url, count(*) '
+            'from            Playlist p '
+            '                inner join PlaylistFollow pf on p.id = pf.playlist_id '
+            '                inner join PlaylistTrack pt on p.id = pt.playlist_id '
+            '                left outer join PlaylistImage pi on p.id = pi.playlist_id '
+            'where           pf.user_id=%s '
+            'group by        p.id '
+            'having          img_area is null or img_area = max(img_area)',
             (user.id,))
-        return [PlaylistSummaryView(row[0], row[1], row[2]) for row in cursor]
+        return [PlaylistSummaryView(id=row[0], name=row[1], image_width=row[2], image_height=row[3],
+                                    image_url=row[5], track_count=row[6]) for row in cursor]
