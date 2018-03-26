@@ -332,7 +332,7 @@ def preflight_check():
     passed('Database password found') if 'MYSQL_DATABASE_PASSWORD' in os.environ else failed('MYSQL_DATABASE_PASSWORD environment variable missing')
 
     try:
-        with mysql.get_db().cursor() as cursor:
+        with mysql.connection.cursor() as cursor:
             cursor.execute('select 1')
             if cursor.rowcount == 1:
                 passed('Can connect to database and execute queries')
