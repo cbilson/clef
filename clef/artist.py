@@ -84,6 +84,7 @@ class Artist:
                        (self.id, genre, genre))
 
     def add_image(self, width, height, url):
+        app.logger.debug('adding image for artist %s (id:%s): %s' % (self.name, self.id, url))
         cursor = mysql.connection.cursor()
         cursor.execute('insert into ArtistImage(artist_id, width, height, url) '
                        'values(%s, %s, %s, %s) '

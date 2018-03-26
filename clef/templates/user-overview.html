@@ -71,6 +71,7 @@
          li.removeAttribute('id');
          li.classList.remove('hide');
          li.innerText = playlists[i].name + ' (' + playlists[i].track_count + ' tracks)';
+         li.dataset.coverUrl = playlists[i].image_url;
          li.addEventListener('mouseenter', mouseEnterPlaylistItem);
          li.addEventListener('mouseleave', mouseLeavePlaylistItem);
          playlistsHtml.appendChild(li);
@@ -84,7 +85,9 @@
  });
 
  function mouseEnterPlaylistItem(item) {
-   playlistCover.setAttribute('src', item.target.dataset.coverUrl);
+   if (item.target.dataset.coverUrl != null) {
+     playlistCover.setAttribute('src', item.target.dataset.coverUrl);
+   }
  }
 
  function mouseLeavePlaylistItem(item) {
