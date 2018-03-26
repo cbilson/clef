@@ -9,7 +9,7 @@ import click
 import colorama
 import json
 
-import clef.spotify
+import clef.spotify as spotify
 
 from colorama import Fore, Back, Style
 from clef import app, mysql
@@ -132,19 +132,20 @@ def open_portal():
 def get_spotify_playlist(user_id, playlist_id, owner_id, fields):
     """Get a Spotify playlist by id."""
     user = User.load(user_id)
-    playlist = clef.spotify.get_playlist(user, playlist_id, owner=owner_id, fields=fields)
+    playlist = spotify.get_playlist(user, playlist_id, owner=owner_id, fields=fields)
     mysql.connection.commit()   # in case the user's token was refreshed
     click.echo('Result:')
     click.echo(json.dumps(playlist, indent=2, sort_keys=True))
 
 @app.cli.command('get-spotify-user-playlists')
 @click.option('--user-id')
-def get_spotify_user_playlist(user_id):
+def get_spotify_user_playlists(user_id):
     """Get all Spotify playlists for a user."""
     user = User.load(user_id)
     count = 0
-    for playlist in clef.spotify.get_user_playlists(user):
+    for playlist in spotify.get_user_playlists(user):
         click.echo(json.dumps(playlist, indent=2, sort_keys=True))
+        click.echo(',')
         count += 1
 
     mysql.connection.commit() # in case user token changed
@@ -165,7 +166,7 @@ def get_spotify_playlist_tracks(user_id, playlist_id):
         playlist = Playlist.from_json(result)
 
     count = 0
-    for track in clef.spotify.get_playlist_tracks(user, playlist):
+    for track in spotify.get_playlist_tracks(user, playlist):
         click.echo(json.dumps(track, indent=2, sort_keys=True))
         count += 1
 
@@ -179,7 +180,7 @@ def get_spotify_albums(user_id, album_ids):
     """Get Spotify albums by id."""
     user = User.load(user_id)
     count = 0
-    for album in clef.spotify.get_albums(user, album_ids):
+    for album in spotify.get_albums(user, album_ids):
         click.echo(json.dumps(album, indent=2, sort_keys=True))
         click.echo()
         count += 1
@@ -194,7 +195,7 @@ def get_spotify_artists(user_id, artist_ids):
     """Get Spotify artists by id."""
     user = User.load(user_id)
     count = 0
-    for artist in clef.spotify.get_artists(user, artist_ids):
+    for artist in spotify.get_artists(user, artist_ids):
         click.echo(json.dumps(artist, indent=2, sort_keys=True))
         click.echo()
         count += 1
@@ -209,7 +210,7 @@ def get_spotify_tracks(user_id, track_ids):
     """Get spotify tracks by id."""
     user = User.load(user_id)
     count = 0
-    for track in clef.spotify.get_tracks(user, track_ids):
+    for track in spotify.get_tracks(user, track_ids):
         click.echo(json.dumps(track, indent=2, sort_keys=True))
         click.echo()
         count += 1
@@ -225,7 +226,7 @@ def get_spotify_audio_features(user_id, track_ids):
     See: https://beta.developer.spotify.com/documentation/web-api/reference/tracks/get-audio-features/"""
     user = User.load(user_id)
     count = 0
-    for features in clef.spotify.get_audio_features(user, track_ids):
+    for features in spotify.get_audio_features(user, track_ids):
         click.echo(json.dumps(features, indent=2, sort_keys=True))
         click.echo()
         count += 1
@@ -240,7 +241,7 @@ def get_spotify_audio_analysis(user_id, track_id):
     """Get Spotify's audio analysis for a track. See: https://beta.developer.spotify.com/documentation/web-api/reference/tracks/get-audio-analysis/"""
     user = User.load(user_id)
     count = 0
-    analysis = clef.spotify.get_audio_analysis(user, track_id)
+    analysis = spotify.get_audio_analysis(user, track_id)
     click.echo('{')
 
     click.echo('"bars": [')
