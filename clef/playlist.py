@@ -296,9 +296,9 @@ class PlaylistSummaryView:
     def for_user(user):
         cursor = mysql.connection.cursor()
         cursor.execute(
-            'select          p.id, p.name, pi.width, pi.height, pi.width * pi.height as img_area, pi.url, count(*) '
-            'from            Playlist p '
-            '                inner join PlaylistFollow pf on p.id = pf.playlist_id '
+            'select          pf.playlist_id, p.name, pi.width, pi.height, pi.width * pi.height as img_area, pi.url, count(*) '
+            'from            PlaylistFollow pf '
+            '                inner join Playlist p on pf.playlist_id = p.id '
             '                inner join PlaylistTrack pt on p.id = pt.playlist_id '
             '                left outer join PlaylistImage pi on p.id = pi.playlist_id '
             'where           pf.user_id=%s '
