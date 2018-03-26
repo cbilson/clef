@@ -269,7 +269,6 @@ class PlaylistSummaryView:
             'from Playlist p '
             '  inner join PlaylistFollow pf on p.id = pf.playlist_id '
             '  inner join PlaylistTrack pt on p.id = pt.playlist_id '
-            '  inner join PlaylistImage pi on p.id = pi.playlist_id '
             'where pf.user_id=%s '
             'group by p.id',
             (user.id,))
