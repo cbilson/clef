@@ -30,7 +30,7 @@ class Artist:
         artist = Artist.from_json(js)
         artist.save()
 
-        if 'genre' in js:
+        if 'genres' in js:
             for genre in js['genres']:
                 artist.add_genre(genre)
 
@@ -76,6 +76,7 @@ class Artist:
                         self.name, self.type, self.followers, self.popularity))
 
     def add_genre(self, genre):
+        app.logger.debug('adding genre for artist %s (id:%s): %s' % (self.name, self.id, genre))
         cursor = mysql.connection.cursor()
         cursor.execute('insert into ArtistGenre(artist_id, genre) '
                        'values(%s, %s) '
