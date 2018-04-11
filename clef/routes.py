@@ -55,6 +55,16 @@ def user(id):
 
 @app.route('/user/<user_id>/refresh', methods=['POST'])
 def refresh(user_id):
+    # Adding this light-weight "refresh" so I can test without waiting 10 minutes to reload my playlists
+    if 'user_id' not in session: abort(401)
+    if session['user_id'] != user_id: abort(403)
+    user = User.load(user_id)
+    mysql.connection.commit()
+    playlists = PlaylistSummaryView.for_user(user)
+    return jsonify([p.__dict__ for p in playlists])
+
+@app.route('/user/<user_id>/full-refresh', methods=['POST'])
+def full_refresh(user_id):
     if 'user_id' not in session: abort(401)
     if session['user_id'] != user_id: abort(403)
     user = User.load(user_id)
@@ -70,6 +80,16 @@ def artists(user_id):
     user = User.load(user_id)
     artists = list(UserArtistOverview.for_user(user))
     return render_template('artists.html', user=user, artists=artists)
+
+@app.route('/user/<user_id>/save', methods=['POST'])
+def user_save(user_id):
+    if 'user_id' not in session: abort(401)
+    if session['user_id'] != user_id: abort(403)
+    user = User.load(user_id)
+    user.name = request.json['displayName']
+    user.save()
+    mysql.connection.commit()
+    return jsonify(dict(id=user.id, email=user.email, name=user.name, joined=user.joined))
 
 @app.route('/search')
 def search():

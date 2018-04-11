@@ -1,114 +1,29 @@
-{% extends "layout.html" %}
-{% block head %}
-<style>
- #playlistCover { height: 240px; }
- #playlist-col { height: 500px; overflow: scroll;}
-</style>
-{% endblock %}
-{% block nav %}
-<li>
-  <div id="refreshSpinner" class="preloader-wrapper small active hide">
-    <div class="spinner-layer spinner-green-only">
-      <div class="circle-clipper left">
-        <div class="circle"></div>
-      </div><div class="gap-patch">
-        <div class="circle"></div>
-      </div><div class="circle-clipper right">
-        <div class="circle"></div>
-      </div>
-    </div>
-  </div><a id="refreshData" href="#">Refresh My Data</a>
-</li>
-<li><a href="playlists">Playlists</a></li>
-<li><a href="artists">Artists</a></li>
-<!-- <li><a href="compare-to/cbilson">Compare with cbilson</a></li> -->
-{% endblock %}
-{% block body %}
-<div class="row">
-  <h1 id="userDisplayName" contenteditable="true" title="click to edit" spellcheck="false">{{user.display_name()}}</h1>
+{% extends "user_layout.html" %}
+{% block user_content %}
+<h5>Playlists</h5>
+<div class="col s8 scroll-list">
+  <ul id="playlists">
+    <li id="playlist-item-template" class="track hide">TEMPLATE</li>
+    {% for playlist in playlists %}
+    <li class="track" data-cover-url="{{playlist.image_url}}">
+      {{playlist.name}} ({{playlist.track_count}} tracks)
+    </li>
+    {% endfor %}
+  </ul>
 </div>
-<div class="row">
-  <div class="col s8 playlist-col">
-    <h5>Your Playlists</h5>
-    <ul id="playlists">
-      <li id="playlistItemTemplate" class="track hide">TEMPLATE</li>
-      {% for playlist in playlists %}
-      <li class="track" data-cover-url="{{playlist.image_url}}">
-        {{playlist.name}} ({{playlist.track_count}} tracks)
-      </li>
-      {% endfor %}
-    </ul>
-  </div>
-  <div class="col s4">
-    <img id="playlistCover">
-    <audio controls>
-      <source id="audio-preview" type="audio/mpeg">
-    </audio>
-    <div class="switch">
-      Autoplay
-      <label>
-        Off
-        <input type="checkbox">
-        <span class="lever"></span>
-        On
-      </label>
-    </div>  </div>
+<div class="col s4">
+  <img id="playlist-cover" class="cover big">
+  <audio controls>
+    <source id="audio-preview" type="audio/mpeg">
+  </audio>
+  <div class="switch">
+    Autoplay
+    <label>
+      Off
+      <input type="checkbox">
+      <span class="lever"></span>
+      On
+    </label>
+  </div>  </div>
 </div>
-{% endblock %}
-{% block scripts %}
-<script>
- var refreshData = document.getElementById('refreshData');
- var playlistsHtml = document.getElementById('playlists');
- var playlistCover = document.getElementById('playlistCover');
-
- refreshData.addEventListener('click', function(e) {
-   if (refreshData.classList.contains('disabled')) { return; }
-   refreshData.classList.add('disabled');
-   document.getElementById('refreshSpinner').classList.remove('hide');
-   var xhr = new XMLHttpRequest();
-   xhr.open('POST', 'refresh');
-   xhr.onload = function() {
-     document.getElementById('refreshSpinner').classList.add('hide');
-     if (xhr.status == 200) {
-       var playlists = JSON.parse(xhr.responseText);
-       var template = document.getElementById('playlistItemTemplate').cloneNode(true);
-       while (playlistsHtml.firstChild)
-         playlistsHtml.removeChild(playlistsHtml.firstChild);
-
-       playlistsHtml.appendChild(template);
-
-       for (var i = 0; i < playlists.length; i++) {
-         var li = template.cloneNode();
-         li.removeAttribute('id');
-         li.classList.remove('hide');
-         li.innerText = playlists[i].name + ' (' + playlists[i].track_count + ' tracks)';
-         li.dataset.coverUrl = playlists[i].image_url;
-         li.addEventListener('mouseenter', mouseEnterPlaylistItem);
-         li.addEventListener('mouseleave', mouseLeavePlaylistItem);
-         playlistsHtml.appendChild(li);
-       }
-     }
-
-     refreshData.classList.remove('disabled');
-   }
-
-   xhr.send();
- });
-
- function mouseEnterPlaylistItem(item) {
-   if (item.target.dataset.coverUrl != null) {
-     playlistCover.setAttribute('src', item.target.dataset.coverUrl);
-   }
- }
-
- function mouseLeavePlaylistItem(item) {
-   //   playlistCover.setAttribute('src', '');
- }
-
- playlistItems = playlistsHtml.children;
- for (var i = 0; i < playlistItems.length; i++) {
-   playlistItems[i].addEventListener('mouseenter', mouseEnterPlaylistItem);
-   playlistItems[i].addEventListener('mouseleave', mouseLeavePlaylistItem);
- }
-</script>
 {% endblock %}

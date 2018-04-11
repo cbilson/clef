@@ -25,3 +25,17 @@ searchText.addEventListener('input', function(e) {
 
   pendingSearch.send();
 });
+
+
+function showPageWarning(msg) {
+  icon = document.getElementById('page-warning');
+
+  // "restart" the animation
+  icon.classList.remove('fade-alert');
+  void icon.offsetWidth;
+  icon.classList.add('fade-alert');
+
+  // set the warning tooltip and show a toast notification.
+  icon.dataset.tooltip = msg;
+  M.toast({html: msg});
+}

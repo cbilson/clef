@@ -1,0 +1,30 @@
+{#
+Layout for pages for a logged in user.
+#}
+{% extends "layout.html" %}
+{% block head %}
+<style>
+</style>
+{% endblock %}
+{% block nav %}
+<li><a id="refresh-data" href="#">Refresh My Data<i id="refresh-data-icon" class="material-icons left">refresh</i></a></li>
+<li><a href="playlists">Playlists</a></li>
+<li><a href="artists">Artists</a></li>
+<!-- <li><a href="compare-to/cbilson">Compare with cbilson</a></li> -->
+{% endblock %}
+{% block body %}
+<div class="row">
+  <h1>
+    <span id="user-display-name" contenteditable="true" title="click to edit" spellcheck="false">{{user.display_name()}}</span>
+    <a id="user-save-button" class="wave-effect waves-light btn hide" accesskey="S">
+      <i id="save-user-icon" class="material-icons left">save</i>
+    </a></h1>
+</div>
+<div class="row">
+  {% block user_content %}
+  {% endblock %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script type="text/javascript" src="/static/user.js?{{range(1000000)|random}}"></script>
+{% endblock %}
