@@ -1,12 +1,8 @@
-M.Dropdown.init(document.querySelector('.dropdown-trigger'));
-
-searchTextOptions = {minLength: 3};
-search = M.Autocomplete.init(
-  document.getElementById('search-text'),
-  searchTextOptions);
+M.AutoInit();
 
 var pendingSearch = null;
-search.el.addEventListener('input', function(e) {
+var searchText = document.getElementById('search-text');
+searchText.addEventListener('input', function(e) {
   if (e.target.value.length < 3)
     return;
 
@@ -22,7 +18,7 @@ search.el.addEventListener('input', function(e) {
       for (var i = 0; i < results.length; i++)
         data[results[i].name + ' (' + results[i].type + ')'] = null;
 
-      search.updateData(data);
+      M.Autocomplete.getInstance(searchText).updateData(data);
       pendingSearch = null;
     }
   }
