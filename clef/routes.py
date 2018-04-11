@@ -30,7 +30,7 @@ def login():
     app.logger.info('url: %s', authorize_url)
     return redirect(authorize_url)
 
-@app.route('/user/<id>/overview')
+@app.route('/user/<id>/playlists')
 def user(id):
     app.logger.debug('/user/%s' % id)
     if 'user_id' in session:
@@ -42,7 +42,7 @@ def user(id):
             if id != user.id: abort(403)
             app.logger.info('User %s is logged in.' % user.id)
             playlists = PlaylistSummaryView.for_user(user)
-            return render_template('user-overview.html', user=user, playlists=playlists)
+            return render_template('playlists.html', user=user, playlists=playlists)
 
         app.logger.warn('User %s not found in database.' % user_id)
     else:
@@ -69,7 +69,7 @@ def artists(user_id):
     if session['user_id'] != user_id: abort(403)
     user = User.load(user_id)
     artists = list(UserArtistOverview.for_user(user))
-    return render_template('user-artist-summary.html', user=user, artists=artists)
+    return render_template('artists.html', user=user, artists=artists)
 
 @app.route('/search')
 def search():
@@ -121,7 +121,7 @@ def authorized():
     user.save()
     mysql.connection.commit()
 
-    user_url = '/user/%s/overview' % user.id
+    user_url = '/user/%s/playlists' % user.id
     session['user_id'] = user.id
     session.modified = True
     app.logger.info('redirecting to %s with session set to user_id %s' % (user_url, session['user_id']))

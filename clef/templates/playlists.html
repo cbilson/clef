@@ -1,33 +1,39 @@
 {% extends "layout.html" %}
+{% block head %}
+<style>
+ #playlistCover { height: 240px; }
+ #playlist-col { height: 500px; overflow: scroll;}
+</style>
+{% endblock %}
+{% block nav %}
+<li>
+  <div id="refreshSpinner" class="preloader-wrapper small active hide">
+    <div class="spinner-layer spinner-green-only">
+      <div class="circle-clipper left">
+        <div class="circle"></div>
+      </div><div class="gap-patch">
+        <div class="circle"></div>
+      </div><div class="circle-clipper right">
+        <div class="circle"></div>
+      </div>
+    </div>
+  </div><a id="refreshData" href="#">Refresh My Data</a>
+</li>
+<li><a href="playlists">Playlists</a></li>
+<li><a href="artists">Artists</a></li>
+<!-- <li><a href="compare-to/cbilson">Compare with cbilson</a></li> -->
+{% endblock %}
 {% block body %}
 <div class="row">
-  <h1>{{user.display_name()}}</h1>
+  <h1 id="userDisplayName" contenteditable="true" title="click to edit" spellcheck="false">{{user.display_name()}}</h1>
 </div>
 <div class="row">
-  <div class="col s8">
-    <h5>Your Artists</h5>
-    <table class="striped">
-      <thead>
-        <tr>
-          <th>Artist</th>
-          <th>Tracks</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for artist, tracks in artists %}
-        <tr>
-          <td>{{artist}}</td>
-          <td>{{tracks}}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <div class="col s8 playlist-col">
+    <h5>Your Playlists</h5>
     <ul id="playlists">
-      <li id="playlistItemTemplate" class="hide">TEMPLATE</li>
+      <li id="playlistItemTemplate" class="track hide">TEMPLATE</li>
       {% for playlist in playlists %}
-      <li data-cover-url="{{playlist.image_url}}"
-          data-cover-width="{{playlist.image_width}}"
-          data-cover-height="{{playlist.image_height}}">
+      <li class="track" data-cover-url="{{playlist.image_url}}">
         {{playlist.name}} ({{playlist.track_count}} tracks)
       </li>
       {% endfor %}
@@ -35,7 +41,18 @@
   </div>
   <div class="col s4">
     <img id="playlistCover">
-  </div>
+    <audio controls>
+      <source id="audio-preview" type="audio/mpeg">
+    </audio>
+    <div class="switch">
+      Autoplay
+      <label>
+        Off
+        <input type="checkbox">
+        <span class="lever"></span>
+        On
+      </label>
+    </div>  </div>
 </div>
 {% endblock %}
 {% block scripts %}
@@ -65,6 +82,7 @@
          li.removeAttribute('id');
          li.classList.remove('hide');
          li.innerText = playlists[i].name + ' (' + playlists[i].track_count + ' tracks)';
+         li.dataset.coverUrl = playlists[i].image_url;
          li.addEventListener('mouseenter', mouseEnterPlaylistItem);
          li.addEventListener('mouseleave', mouseLeavePlaylistItem);
          playlistsHtml.appendChild(li);
@@ -78,11 +96,13 @@
  });
 
  function mouseEnterPlaylistItem(item) {
-   playlistCover.setAttribute('src', item.target.dataset.coverUrl);
+   if (item.target.dataset.coverUrl != null) {
+     playlistCover.setAttribute('src', item.target.dataset.coverUrl);
+   }
  }
 
  function mouseLeavePlaylistItem(item) {
-   playlistCover.setAttribute('src', '');
+   //   playlistCover.setAttribute('src', '');
  }
 
  playlistItems = playlistsHtml.children;
