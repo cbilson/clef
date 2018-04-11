@@ -1,6 +1,6 @@
 #nav-drop-down {
     min-width: 250px;
-    margin-top: 65px;
+    top: -65px;
 }
 
 @keyframes strobe-animation {
