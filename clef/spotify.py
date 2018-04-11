@@ -195,7 +195,7 @@ def get_albums(user, album_ids, fields=DEFAULT_ALBUM_FIELDS):
     limit = 20
     queue = list(album_ids)
     url = 'https://api.spotify.com/v1/albums/'
-    params = {'ids':','.join(queue[0:limit]), 'fields':fields}
+    params = {'ids': ','.join(queue[0:limit]), 'fields': fields}
 
     while len(queue) > 0:
         status, result = _get_json(user, url, params=params)
@@ -241,6 +241,7 @@ def get_tracks(user, track_ids):
 
         for item in result['tracks']: yield item
         del queue[0:limit]
+        app.logger.debug('Remaining: %s...' % len(queue))
         params['ids'] = ','.join(queue[0:limit])
 
 def get_audio_features(user, track_ids):

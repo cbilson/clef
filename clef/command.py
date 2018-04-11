@@ -327,6 +327,72 @@ def remove_playlist(user_id, playlist_id):
     Playlist.remove_playlists(user, playlist_id)
     mysql.connection.commit()
 
+@app.cli.command('refresh-all-tracks')
+@click.option('--user-id')
+def refresh_all_tracks(user_id):
+    user = User.load(user_id)
+    cursor = mysql.connection.cursor()
+    cursor.execute('select id from Track')
+    spotify_tracks = spotify.get_tracks(user, [row[0] for row in cursor])
+    for track in [Track.from_json(js) for js in spotify_tracks]:
+        track.save()
+
+    mysql.connection.commit()
+
+@app.cli.command('refresh-all-albums')
+@click.option('--user-id')
+@click.option('--album-id', multiple=True)
+@click.option('--limit')
+def refresh_all_albums(user_id, album_ids=None, limit=1000):
+    user = User.load(user_id)
+    if album_ids is None:
+        cursor = mysql.connection.cursor()
+        cursor.execute('select id from Album limit %s' % limit)
+        album_ids = [row[0] for row in cursor]
+
+    spotify_albums = spotify.get_albums(user, album_ids)
+    for album in [Album.import_json(js) for js in spotify_albums]:
+        album.save()
+        click.echo('Updated album %s (%s)' % (album.id, album.name))
+
+    mysql.connection.commit()
+
+@app.cli.command('refresh-artists')
+@click.option('--user-id')
+@click.option('--artist-ids', multiple=True)
+@click.option('--limit')
+def refresh_artists(user_id, artist_ids=[], limit=1000):
+    user = User.load(user_id)
+    if len(artist_ids) < 1:
+        cursor = mysql.connection.cursor()
+        cursor.execute('''
+        select distinct a.id
+        from   Artist a
+               left outer join ArtistGenre ag on a.id = ag.artist_id
+        where  isnull(ag.genre)
+        limit %s''' % limit)
+        artist_ids = [row[0] for row in cursor]
+
+    for artist in [Artist.import_json(sa) for sa in spotify.get_artists(user, artist_ids)]:
+        artist.save()
+        click.echo('Updated artist %s (%s)' % (artist.id, artist.name))
+
+    mysql.connection.commit()
+
+#
+# "Raw" Commands: commands that exercise the same APIs as the web site
+# but return JSON.
+#
+@app.cli.command('get-playist-details')
+@click.option('--user-id')
+@click.option('--playlist-id')
+def get_playlist_details(user_id, playlist_id):
+    view = Playlist.PlaylistDetailsView.get(user_id, playlist_id)
+    mysql.connection.commit()
+
+    click.echo('result:')
+    click.echo(json.dumps(view, indent=2, sort_keys=True))
+
 #
 # Testing Commands
 #

@@ -281,6 +281,7 @@ class PlaylistRefreshResults:
                 % (new, updated, deleted, self.track_count, self.artist_count, self.album_count))
 
 class PlaylistSummaryView:
+    """Gets a summary of a user's playlists - data shown on the /user/{id}."""
     def __init__(self, id, name, track_count, image_width, image_height, image_url):
         self.id = id
         self.name = name
@@ -303,7 +304,35 @@ class PlaylistSummaryView:
             '                left outer join PlaylistImage pi on p.id = pi.playlist_id '
             'where           pf.user_id=%s '
             'group by        p.id '
-            'having          img_area is null or img_area = max(img_area)',
+            'having          img_area is null or img_area = max(img_area);',
             (user.id,))
         return [PlaylistSummaryView(id=row[0], name=row[1], image_width=row[2], image_height=row[3],
                                     image_url=row[5], track_count=row[6]) for row in cursor]
+
+class PlaylistDetailsView:
+    """Gets details about a particular playlist for a user - data for /user/{uid}/playlist/{pid}."""
+    def __init__(self, user_id, playlist_id, owner_id, name, tracks, previews):
+        self.user_id = user_id
+        self.playlist_id = playlist_id
+        self.owner_id = owner_id
+        self.name = name
+        self.tracks = tracks
+        self.previews = previews
+
+    def get(user_id, playlist_id):
+        cursor = mysql.connection.cursor()
+        cursor.execute("""
+        select          id, owner_id, name
+        from            Playlist
+        where           id = %s;
+
+        -- tracks
+        select          t.id, t.name, t.popularity, t.preview_url
+        from            PlaylistTrack pt
+                        inner join Track t on pt.track_id = t.id
+        where           pt.playlist_id = '05t6JcdxlITC63zYZlgxmr'
+        order by        popularity desc;
+
+        -- genre analysis
+        """,
+                       (playlist_id))

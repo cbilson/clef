@@ -71,6 +71,19 @@ def artists(user_id):
     artists = list(UserArtistOverview.for_user(user))
     return render_template('user-artist-summary.html', user=user, artists=artists)
 
+@app.route('/search')
+def search():
+    cursor = mysql.connection.cursor()
+    cursor.execute("""
+select e.id, e.type, e.name
+from SearchTerm t
+inner join SearchEntity e
+on t.entity_id = e.id
+where t.term like %s
+limit 20
+    """, (('%' + request.args.get('term') + '%',)))
+    return jsonify([dict(id=row[0], type=row[1], name=row[2]) for row in cursor])
+
 @app.route('/authorized')
 def authorized():
     if 'error' in request.args:

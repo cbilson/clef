@@ -1,7 +1,8 @@
 {% extends "layout.html" %}
 {% block head %}
 <style>
- #playlistCover {max-width: 240px;}
+ #playlistCover { height: 240px; }
+ #playlist-col { height: 500px; overflow: scroll;}
 </style>
 {% endblock %}
 {% block nav %}
@@ -18,15 +19,16 @@
     </div>
   </div><a id="refreshData" href="#">Refresh My Data</a>
 </li>
+<li><a href="overview">My Playlists</a></li>
 <li><a href="artists">My Artists</a></li>
-<li><a href="compare-to/cbilson">Compare with cbilson</a></li>
+<!-- <li><a href="compare-to/cbilson">Compare with cbilson</a></li> -->
 {% endblock %}
 {% block body %}
 <div class="row">
-  <h1>{{user.display_name()}}</h1>
+  <h1 id="userDisplayName" contenteditable="true" title="click to edit" spellcheck="false">{{user.display_name()}}</h1>
 </div>
 <div class="row">
-  <div class="col s8">
+  <div class="col s8 playlist-col">
     <h5>Your Playlists</h5>
     <ul id="playlists">
       <li id="playlistItemTemplate" class="track hide">TEMPLATE</li>
@@ -39,7 +41,18 @@
   </div>
   <div class="col s4">
     <img id="playlistCover">
-  </div>
+    <audio controls>
+      <source id="audio-preview" type="audio/mpeg">
+    </audio>
+    <div class="switch">
+      Autoplay
+      <label>
+        Off
+        <input type="checkbox">
+        <span class="lever"></span>
+        On
+      </label>
+    </div>  </div>
 </div>
 {% endblock %}
 {% block scripts %}
@@ -89,7 +102,7 @@
  }
 
  function mouseLeavePlaylistItem(item) {
-   playlistCover.setAttribute('src', '');
+   //   playlistCover.setAttribute('src', '');
  }
 
  playlistItems = playlistsHtml.children;

@@ -1,5 +1,6 @@
+import json
 from datetime import datetime, timedelta
-from clef import mysql
+from clef import app, mysql
 
 class Album:
     def __init__(self, id, name, label, album_type, popularity, release_date):
