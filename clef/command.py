@@ -339,6 +339,30 @@ def refresh_all_tracks(user_id):
 
     mysql.connection.commit()
 
+@app.cli.command('refresh-track-audio-features')
+@click.option('--user-id')
+@click.option('--track-ids', multiple=True)
+@click.option('--limit', default=1000)
+def refresh_track_audio_features(user_id, track_ids, limit):
+    user = User.load(user_id)
+    if len(track_ids) < 1:
+        cursor = mysql.connection.cursor()
+        cursor.execute('select id from Track where danceability is null limit %s', (limit,))
+        track_ids = [row[0] for row in cursor]
+
+    features = spotify.get_audio_features(user, track_ids)
+    by_track_id = {f['id']:f for f in features if f != None}
+    if len(by_track_id) < 1:
+        click.echo('No features available for these tracks.')
+        return
+
+    tracks = Track.load_many(by_track_id.keys()).values()
+    for track in tracks:
+        track.update_features(by_track_id[track.id])
+        track.save()
+
+    mysql.connection.commit()
+
 @app.cli.command('refresh-all-albums')
 @click.option('--user-id')
 @click.option('--album-id', multiple=True)
