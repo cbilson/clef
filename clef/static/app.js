@@ -1,3 +1,5 @@
+M.Dropdown.init(document.querySelector('.dropdown-trigger'));
+
 searchTextOptions = {minLength: 3};
 search = M.Autocomplete.init(document.getElementById('search-text'), searchTextOptions);
 search.el.addEventListener('input', function(e) {
