@@ -1,10 +1,11 @@
 import base64, json, os, requests
+import jsonpickle
 from datetime import datetime, timedelta
 from urllib.parse import unquote
 from flask import render_template, get_template_attribute, request, session, redirect, url_for, jsonify
 from clef.spotify import get_auth_url, get_auth_token, get_user, get_user_playlists
 from clef.user import User, UserArtistOverview
-from clef.playlist import Playlist, PlaylistSummaryView
+from clef.playlist import Playlist, PlaylistSummaryView, PlaylistDetailsView
 from clef.helpers import dump_session
 from clef import app, mysql
 
@@ -90,6 +91,12 @@ def user_save(user_id):
     user.save()
     mysql.connection.commit()
     return jsonify(dict(id=user.id, email=user.email, name=user.name, joined=user.joined))
+
+@app.route('/user/<user_id>/playlist/<playlist_id>/details')
+def user_playlist_details(user_id, playlist_id):
+    if 'user_id' not in session: abort(401)
+    if session['user_id'] != user_id: abort(403)
+    return jsonpickle.encode(PlaylistDetailsView.get(user_id, playlist_id), unpicklable=False)
 
 @app.route('/search')
 def search():

@@ -5,7 +5,7 @@
   <ul id="playlists">
     <li id="playlist-item-template" class="track hide">TEMPLATE</li>
     {% for playlist in playlists %}
-    <li class="track" data-cover-url="{{playlist.image_url}}">
+    <li class="track" data-cover-url="{{playlist.image_url}}" data-id="{{playlist.id}}">
       {{playlist.name}} ({{playlist.track_count}} tracks)
     </li>
     {% endfor %}
@@ -16,6 +16,7 @@
   <audio controls>
     <source id="audio-preview" type="audio/mpeg">
   </audio>
+  <i id="playlist-loading" class="material-icons right">access_time</i>
   <div class="switch">
     Autoplay
     <label>

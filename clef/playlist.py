@@ -311,28 +311,86 @@ class PlaylistSummaryView:
 
 class PlaylistDetailsView:
     """Gets details about a particular playlist for a user - data for /user/{uid}/playlist/{pid}."""
-    def __init__(self, user_id, playlist_id, owner_id, name, tracks, previews):
-        self.user_id = user_id
-        self.playlist_id = playlist_id
-        self.owner_id = owner_id
-        self.name = name
-        self.tracks = tracks
-        self.previews = previews
+    def __init__(self):
+        self.user_id = None
+        self.playlist_id = None
+        self.owner_id = None
+        self.name = None
+        self.explicitness = None
+        self.popularity = None
+        self.acousticness = None
+        self.danceability = None
+        self.energy = None
+        self.instrumentalness = None
+        self.liveness = None
+        self.loudness = None
+        self.speechiness = None
+        self.tempo = None
+        self.valence = None
+        self.previews = None
+        self.genres = None
 
     def get(user_id, playlist_id):
         cursor = mysql.connection.cursor()
         cursor.execute("""
-        select          id, owner_id, name
-        from            Playlist
-        where           id = %s;
+        -- playlist summary metrics
+        select          p.id, p.owner, p.name,
+                        avg(acousticness) as acousticness,
+                        avg(danceability) as danceability,
+                        avg(energy) as energy,
+                        avg(instrumentalness) as instrumentalness,
+                        avg(liveness) as liveness,
+                        avg(loudness) as loudness,
+                        avg(speechiness) as speechiness,
+                        avg(tempo) as tempo,
+                        avg(valence) as valence
+        from            Playlist p
+                        inner join PlaylistTrack pt on p.id = pt.playlist_id
+                        inner join Track t on pt.track_id = t.id
+        where           p.id = %s
+        group by        p.id;
 
-        -- tracks
-        select          t.id, t.name, t.popularity, t.preview_url
+        -- track previews
+        select          t.preview_url
         from            PlaylistTrack pt
                         inner join Track t on pt.track_id = t.id
-        where           pt.playlist_id = '05t6JcdxlITC63zYZlgxmr'
-        order by        popularity desc;
+        where           pt.playlist_id = %s
+                        and t.preview_url is not null
+        order by        t.popularity desc
+        limit           10;
 
         -- genre analysis
+        select          ag.genre, count(*)
+        from            PlaylistTrack pt
+                        inner join TrackArtist ta on pt.track_id = ta.track_id
+                        inner join ArtistGenre ag on ta.artist_id = ag.artist_id
+        where           pt.playlist_id = %s
+        group by        ag.genre
+        order by        count(*) desc
+        limit           10;
         """,
-                       (playlist_id))
+                       (playlist_id, playlist_id, playlist_id))
+
+        view = PlaylistDetailsView()
+
+        row = cursor.fetchone()
+        view.id = row[0]
+        view.owner = row[1]
+        view.name = row[2]
+        view.acousticness = row[3]
+        view.danceability = row[4]
+        view.energy = row[5]
+        view.instrumentalness = row[6]
+        view.liveness = row[7]
+        view.loudness = row[8]
+        view.speechiness = row[9]
+        view.tempo = row[10]
+        view.valence = row[11]
+
+        cursor.nextset()
+        view.previews = [row[0] for row in cursor]
+
+        cursor.nextset()
+        view.genres = {row[0]:row[1] for row in cursor}
+
+        return view

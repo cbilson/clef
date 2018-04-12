@@ -8,13 +8,14 @@ import webbrowser
 import click
 import colorama
 import json
+import jsonpickle
 
 import clef.spotify as spotify
 
 from colorama import Fore, Back, Style
 from clef import app, mysql
 from clef.user import User
-from clef.playlist import Playlist, PlaylistSummaryView
+from clef.playlist import Playlist, PlaylistSummaryView, PlaylistDetailsView
 from clef.artist import Artist
 from clef.album import Album
 from clef.track import Track
@@ -407,15 +408,15 @@ def refresh_artists(user_id, artist_ids=[], limit=1000):
 # "Raw" Commands: commands that exercise the same APIs as the web site
 # but return JSON.
 #
-@app.cli.command('get-playist-details')
+@app.cli.command('get-playlist-details')
 @click.option('--user-id')
 @click.option('--playlist-id')
 def get_playlist_details(user_id, playlist_id):
-    view = Playlist.PlaylistDetailsView.get(user_id, playlist_id)
+    view = PlaylistDetailsView.get(user_id, playlist_id)
     mysql.connection.commit()
 
     click.echo('result:')
-    click.echo(json.dumps(view, indent=2, sort_keys=True))
+    click.echo(jsonpickle.encode(view, unpicklable=True))
 
 #
 # Testing Commands

@@ -6,12 +6,13 @@ function logFailed(req) {
   console.log("Request failed: " + req);
 }
 
-function startBackgroundOperation(button, spinner, url, data, success, failed) {
+function startBackgroundOperation(button, spinner, url, data, success, failed, verb) {
   if (button.classList.contains('disabled')) { return; }
   button.classList.add('disabled');
   spinner.classList.add('busy');
   var xhr = new XMLHttpRequest();
-  xhr.open('POST', url);
+  verb = verb == null ? 'POST' : verb;
+  xhr.open(verb, url);
   if (data != null)
     xhr.setRequestHeader('Content-Type', 'application/json');
 
@@ -65,10 +66,24 @@ function mouseLeavePlaylistItem(item) {
   //   playlistCover.setAttribute('src', '');
 }
 
+function clickPlaylist(item) {
+  var url = 'playlist/' + item.target.dataset.id + '/details';
+  var icon = document.getElementById('playlist-loading');
+  startBackgroundOperation(
+    userSaveButton, icon, url, null,
+    function() {
+      console.log('loaded playlist.');
+    },
+    function(xhr) {
+      showPageWarning("Failed to load playlist.");
+    }, 'GET');
+}
+
 playlistItems = playlistsHtml.children;
 for (var i = 0; i < playlistItems.length; i++) {
   playlistItems[i].addEventListener('mouseenter', mouseEnterPlaylistItem);
   playlistItems[i].addEventListener('mouseleave', mouseLeavePlaylistItem);
+  playlistItems[i].addEventListener('click', clickPlaylist);
 }
 
 var userDisplayName = document.getElementById('user-display-name');
@@ -107,3 +122,4 @@ userSaveButton.addEventListener('click', function(e) {
       showPageWarning("Failed to save your changes: " + xhr.responseText);
     });
 });
+
