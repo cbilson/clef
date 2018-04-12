@@ -1,30 +1,78 @@
 {% extends "user_layout.html" %}
 {% block user_content %}
-<h5>Playlists</h5>
-<div class="col s8 scroll-list">
-  <ul id="playlists">
-    <li id="playlist-item-template" class="track hide">TEMPLATE</li>
-    {% for playlist in playlists %}
-    <li class="track" data-cover-url="{{playlist.image_url}}" data-id="{{playlist.id}}">
-      {{playlist.name}} ({{playlist.track_count}} tracks)
-    </li>
-    {% endfor %}
-  </ul>
+<div class="col s8">
+  <h5>Playlists</h5>
+  <div class="scroll-list">
+    <ul id="playlists">
+      <li id="playlist-item-template" class="track hide">TEMPLATE</li>
+      {% for playlist in playlists %}
+      <li class="track" data-cover-url="{{playlist.image_url}}" data-id="{{playlist.id}}">
+        {{playlist.name}} ({{playlist.track_count}} tracks)
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
 </div>
 <div class="col s4">
   <img id="playlist-cover" class="cover big">
   <audio controls>
     <source id="audio-preview" type="audio/mpeg">
   </audio>
-  <i id="playlist-loading" class="material-icons right">access_time</i>
+  <i id="playlist-loading" class="material-icons right hide">access_time</i>
   <div class="switch">
     Autoplay
     <label>
       Off
-      <input type="checkbox">
+      <input id="auto-play" type="checkbox">
       <span class="lever"></span>
       On
     </label>
-  </div>  </div>
+  </div>
+  <div id="now-playing">
+    <h6>You're listening to:</h6>
+    <h5 id="now-playing-name"></h5>
+    <div id="genre-cloud">
+    </div>
+    <table class="striped">
+      <thead>
+        <tr>
+          <th>Attribute</th>
+          <th>Value</th>
+          <th>Attribute</th>
+          <th>Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Danceability</td>
+          <td id="danceability-value"></td>
+          <td>Energy</td>
+          <td id="energy-value"></td>
+        </tr>
+        <tr>
+          <td>Loudness</td>
+          <td id="loudness-value"></td>
+          <td>Tempo</td>
+          <td id="tempo-value"></td>
+        </tr>
+        <tr>
+          <td>Acousticness</td>
+          <td id="acousticness-value"></td>
+          <td>Instrumentalness</td>
+          <td id="instrumentalness-value"></td>
+        </tr>
+        <tr>
+          <td>Liveness</td>
+          <td id="liveness-value"></td>
+          <td>Speechiness</td>
+          <td id="speechiness-value"></td>
+        </tr>
+        <tr>
+          <td>Valence</td>
+          <td id="valence-value"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 </div>
 {% endblock %}

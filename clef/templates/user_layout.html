@@ -14,11 +14,11 @@ Layout for pages for a logged in user.
 {% endblock %}
 {% block body %}
 <div class="row">
-  <h1>
+  <h3>
     <span id="user-display-name" contenteditable="true" title="click to edit" spellcheck="false">{{user.display_name()}}</span>
     <a id="user-save-button" class="wave-effect waves-light btn hide" accesskey="S">
       <i id="save-user-icon" class="material-icons left">save</i>
-    </a></h1>
+    </a></h3>
 </div>
 <div class="row">
   {% block user_content %}

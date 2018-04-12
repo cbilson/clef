@@ -9,6 +9,17 @@
     opacity: 0; /* initially not visible */
 }
 
+#playlist-loading { height: 26px; }
+
+#now-playing {
+    padding-top: 12px;
+    color: #616161;
+}
+
+#now-playing #now-playing-name {
+    color: #212121;
+}
+
 @keyframes strobe-animation {
     0% { opacity: 1; }
     25% { opacity: 0.75; }
