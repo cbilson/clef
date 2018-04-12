@@ -76,14 +76,11 @@ function showGenres(playlistDetails) {
     if (playlistDetails.genres[genre] > maxScore)
       maxScore = playlistDetails.genres[genre]
 
-  console.log('max genre score: ' + maxScore);
-
   for (var genre in playlistDetails.genres) {
     var genreSpan = document.createElement('span');
     genreSpan.innerText = genre;
     var score = playlistDetails.genres[genre];
     var pct = score / maxScore;
-    console.log('score for ' + genre + ' = ' + score + ' (pct. ' + pct + ')');
     genreSpan.style.fontSize = (100 * pct) + '%';
     genreSpan.style.margin = '3px';
     genreCloud.appendChild(genreSpan);
@@ -102,6 +99,33 @@ function showPlaylistAttributes(playlistDetails) {
   document.getElementById('valence-value').innerText = playlistDetails.valence.toFixed(2);
 }
 
+var currentPlaylist = null;
+var player = document.getElementById('audio-preview-controls');
+function playNextSample() {
+  if (currentPlaylist == null)
+    return;
+
+  var source = document.getElementById('audio-preview-source');
+  source.src = currentPlaylist.shift();
+  currentPlaylist.push(source.src);
+
+  player.load();
+  player.play();
+
+  setTimeout(playNextSample, 5000);
+}
+
+function playSampleTracks(playlistDetails) {
+  currentPlaylist = playlistDetails.previews;
+  playNextSample();
+}
+
+var autoPlaySwitch = document.getElementById('auto-play');
+autoPlaySwitch.addEventListener('click', function() {
+  currentPlaylist = null;
+  player.stop();
+});
+
 function clickPlaylist(item) {
   var url = 'playlist/' + item.target.dataset.id + '/details';
   var icon = document.getElementById('playlist-loading');
@@ -110,8 +134,7 @@ function clickPlaylist(item) {
     userSaveButton, icon, url, null,
     function(playlistDetails) {
       icon.classList.add('hide');
-      var autoPlay = document.getElementById('auto-play');
-      if (autoPlay.value) {
+      if (autoPlaySwitch.checked) {
         var nowPlayling = document.getElementById('now-playing');
         nowPlayling.classList.remove('hide');
 
@@ -120,6 +143,7 @@ function clickPlaylist(item) {
 
         showGenres(playlistDetails);
         showPlaylistAttributes(playlistDetails);
+        playSampleTracks(playlistDetails);
       }
     },
     function(xhr) {
