@@ -17,6 +17,7 @@ app.logger.addHandler(console)
 app.config.update(DEBUG = True)
 
 log_path = os.getenv('LOG_PATH')
+log_name = os.getenv('LOG_NAME') or 'clef.log'
 if log_path:
     app.logger.info('Adding RotatingFileHandler logging to %s/clef.log' % log_path)
     file_handler = RotatingFileHandler(log_path + '/clef.log', maxBytes = 1*1024*1024, backupCount = 100)
