@@ -35,12 +35,11 @@
         <td>{{user.joined}}</td>
         <td>{{user.email}}</td>
         <td>
-          <div class="user-status">{{user.status}}
-            <progress class="hide user-operation-progress" />
-          </div>
+          <span class="user-status">{{user.status}}</span>
+          <progress class="hide user-operation-progress" />
         </td>
         <td>
-          {% if user.status == 'New' or False %}
+          {% if user.status != 'Ready' %}
           <a class="waves-effect waves-light btn-small import-button"
              href="#!"
              data-user-id="{{user.id}}">

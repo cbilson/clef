@@ -23,12 +23,16 @@ function checkImportStatus(importButton, progress, userStatus, resultsButton) {
         userStatus.innerText = 'Failed';
       } else {
         userStatus.innerText = job.status;
-        setTimeout(function(){checkImportStatus(importButton, progress, userStatus, resultsButton);}, POLLING_FREQ);
+        setTimeout(function(){
+          checkImportStatus(importButton, progress, userStatus, resultsButton);
+        }, POLLING_FREQ);
       }
     } else {
       // TODO: Feedback of some kind
       userStatus.innerText = 'Something is up...';
-      setTimeout(function(){checkImportStatus(importButton, progress, userStatus, resultsButton);}, POLLING_FREQ);
+      setTimeout(function(){
+        checkImportStatus(importButton, progress, userStatus, resultsButton);
+      }, POLLING_FREQ);
     }
   });
   xhr.addEventListener('error', showPageWarning);
