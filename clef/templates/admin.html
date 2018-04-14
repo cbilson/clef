@@ -35,19 +35,20 @@
         <td>{{user.joined}}</td>
         <td>{{user.email}}</td>
         <td>
-          <div class="user-status">{{user.status}}</div>
-          <div class="user-operation hide">
-            Retrieving data...
-            <progress />
+          <div class="user-status">{{user.status}}
+            <progress class="hide user-operation-progress" />
           </div>
         </td>
         <td>
-          {% if user.status == 'New' or True %}
+          {% if user.status == 'New' or False %}
           <a class="waves-effect waves-light btn-small import-button"
              href="#!"
              data-user-id="{{user.id}}">
             <i class="material-icons">import_export</i>Import Playlists</a>
           {% endif %}
+          <a class="waves-effect waves-light btn-small results-button hide"
+             href="#!"
+             target="_blank">Results</a>
         </td>
       </tr>
       {% endfor %}

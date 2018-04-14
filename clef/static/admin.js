@@ -1,6 +1,7 @@
 var importButtons = document.querySelectorAll('.import-button');
+const POLLING_FREQ = 3000;
 
-function checkImportStatus(importButton, progress, userStatus) {
+function checkImportStatus(importButton, progress, userStatus, resultsButton) {
   var xhr = new XMLHttpRequest();
   var jobId = progress.dataset.jobId;
   var url = 'import/job/' + jobId;
@@ -13,6 +14,8 @@ function checkImportStatus(importButton, progress, userStatus) {
         importButton.classList.remove('disabled');
         userStatus.innerText = 'Import complete!';
         importButton.classList.add('hide');
+        resultsButton.href = 'import/job/' + jobId + '/results';
+        resultsButton.classList.remove('hide');
       } else if (job.status == 'Failed') {
         showPageWarning("Import job failed.");
         progress.classList.add('hide');
@@ -20,12 +23,12 @@ function checkImportStatus(importButton, progress, userStatus) {
         userStatus.innerText = 'Failed';
       } else {
         userStatus.innerText = job.status;
-        setTimeout(function(){checkImportStatus(importButton, progress, userStatus);}, 3000);
+        setTimeout(function(){checkImportStatus(importButton, progress, userStatus, resultsButton);}, POLLING_FREQ);
       }
     } else {
       // TODO: Feedback of some kind
       userStatus.innerText = 'Something is up...';
-      setTimeout(function(){checkImportStatus(importButton, progress, userStatus);}, 3000);
+      setTimeout(function(){checkImportStatus(importButton, progress, userStatus, resultsButton);}, POLLING_FREQ);
     }
   });
   xhr.addEventListener('error', showPageWarning);
@@ -38,7 +41,8 @@ for (var i = 0; i < importButtons.length; i++) {
     e.target.classList.add('disabled');
     var row = e.target.parentNode.parentNode;
     var userStatus = row.querySelector('.user-status');
-    var progress = row.querySelector('.user-operation');
+    var progress = row.querySelector('.user-operation-progress');
+    var resultsButton = row.querySelector('.results-button');
     progress.classList.remove('hide');
     var xhr = new XMLHttpRequest();
     xhr.open('POST', 'import/user/' + e.target.dataset.userId);
@@ -47,7 +51,9 @@ for (var i = 0; i < importButtons.length; i++) {
         var res = JSON.parse(xhr.responseText);
         progress.dataset.jobId = res.jobId;
         userStatus.innerText = res.status;
-        setTimeout(function(){checkImportStatus(e.target, progress, userStatus);}, 3000);
+        setTimeout(function () {
+          checkImportStatus(e.target, progress, userStatus, resultsButton);
+        }, POLLING_FREQ);
       }
     });
     xhr.addEventListener('error', showPageWarning);

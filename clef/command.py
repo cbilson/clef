@@ -337,13 +337,17 @@ def webjob(job):
 @app.cli.command('webjob-history')
 @click.option('--job')
 def webjob_history(job):
-    """Gets the history of runs for a web job."""
-    url = 'https://clef2.scm.azurewebsites.net/api/triggeredwebjobs/%s/history' % job
-    resp = requests.get(url, auth=HTTPBasicAuth(os.environ['WEBJOBS_USER_NAME'], os.environ['WEBJOBS_PASSWORD']))
+    """Gets a specific run of a web job."""
+    url = 'https://clef2.scm.azurewebsites.net/api/triggeredwebjobs/%s/history' % (job)
+    auth = HTTPBasicAuth(os.environ['WEBJOBS_USER_NAME'], os.environ['WEBJOBS_PASSWORD'])
+    resp = requests.get(url, auth=auth)
     if resp.status_code == 200:
-        res = jsonpickle.decode(resp.content)
-        for job in res:
-            click.echo(job)
+        result = jsonpickle.decode(resp.content)
+        for entry in result['runs']:
+            print(entry)
+            # for prop in ['id', 'name', 'status', 'start_time', 'end_time', 'duration',
+            #              'output_url', 'error_url', 'url', 'trigger']:
+            #     click.echo('\t%s:\t%s' % (prop, result[prop]))
     elif resp.status_code == 404:
         click.echo('Not run or job does not exist.')
     else:
@@ -376,6 +380,9 @@ def webjob_run(job, run):
     else:
         click.echo('%s. failed. %s' % (resp.status_code, resp.content))
 
+#-------------------------------------------------------------------------------
+# Import Commands
+#-------------------------------------------------------------------------------
 @app.cli.command('import-playlist-images')
 @click.option('--user-id')
 def import_playlist_images(user_id):

@@ -107,6 +107,9 @@ def admin():
     user_list = UserList.get()
     return render_template('admin.html', user=user, user_list=user_list)
 
+def webjobs_auth():
+    return HTTPBasicAuth(os.environ['WEBJOBS_USER_NAME'], os.environ['WEBJOBS_PASSWORD'])
+
 @app.route('/admin/import/user/<user_id>', methods=['POST'])
 def admin_import_user(user_id):
     if 'user_id' not in session: abort(403)
@@ -115,7 +118,7 @@ def admin_import_user(user_id):
 
     url = 'https://clef2.scm.azurewebsites.net/api/triggeredwebjobs/import-user-playlists/run?arguments=%s' % user_id
     app.logger.info('staring import for user_id %s' % user_id)
-    resp = requests.post(url, auth=HTTPBasicAuth(os.environ['WEBJOBS_USER_NAME'], os.environ['WEBJOBS_PASSWORD']))
+    resp = requests.post(url, auth=webjobs_auth())
     if resp.status_code != 202: abort(resp.status_code)
     location = resp.headers['Location']
     url = urlparse(location)
@@ -130,11 +133,21 @@ def admin_import_job(id):
     if not user.is_admin: abort(403)
 
     url = 'https://clef2.scm.azurewebsites.net/api/triggeredwebjobs/import-user-playlists/history/%s' % id
-    resp = requests.get(url, auth=HTTPBasicAuth(os.environ['WEBJOBS_USER_NAME'], os.environ['WEBJOBS_PASSWORD']))
+    resp = requests.get(url, auth=webjobs_auth())
     if resp.status_code != 200: abort(resp.status_code)
     job_info = jsonpickle.decode(resp.content)
     app.logger.debug('job %s, status %s, duration: %s' % (id, job_info['status'], job_info['duration']))
     return resp.content
+
+@app.route('/admin/import/job/<job_id>/results', methods=['GET'])
+def admin_import_job_results(job_id):
+    if 'user_id' not in session: abort(403)
+    user = User.load(session['user_id'])
+    if not user.is_admin: abort(403)
+
+    url = 'https://clef2.scm.azurewebsites.net/vfs/data/jobs/triggered/import-user-playlists/%s/output_log.txt' % job_id
+    resp = requests.get(url, auth=webjobs_auth())
+    return resp.content, resp.status_code, {'Content-Type': 'text/plain; charset=utf-8'}
 
 @app.route('/search')
 def search():
