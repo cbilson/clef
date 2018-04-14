@@ -523,6 +523,8 @@ def preflight_check():
     passed('Database name found') if 'MYSQL_DATABASE_DB' in os.environ else failed('MYSQL_DATABASE_DB environment variable missing')
     passed('Database user found') if 'MYSQL_DATABASE_USER' in os.environ else failed('MYSQL_DATABASE_USER environment variable missing')
     passed('Database password found') if 'MYSQL_DATABASE_PASSWORD' in os.environ else failed('MYSQL_DATABASE_PASSWORD environment variable missing')
+    passed('WebJobs user found') if 'WEBJOBS_USER_NAME' in os.environ else failed('WEBJOBS_USER_NAME environment variable missing')
+    passed('WebJobs password found') if 'WEBJOBS_PASSWORD' in os.environ else failed('WEBJOBS_PASSWORD environment variable missing')
 
     try:
         with mysql.connection.cursor() as cursor:
