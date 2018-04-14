@@ -251,6 +251,7 @@ class Playlist:
         Returns the count of tracks, albums, and artists.
         """
         result = Playlist._import_user_playlists(user, force_reimport=force_reimport)
+        app.logger.debug('Setting user status to Ready')
         user.status = 'Ready'
         return result
 
