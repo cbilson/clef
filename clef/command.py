@@ -9,10 +9,13 @@ import click
 import colorama
 import json
 import jsonpickle
+import requests
 
 import clef.spotify as spotify
 
 from colorama import Fore, Back, Style
+from requests.auth import HTTPBasicAuth
+
 from clef import app, mysql
 from clef.user import User
 from clef.playlist import Playlist, PlaylistSummaryView, PlaylistDetailsView
@@ -290,6 +293,87 @@ def import_user_playlists(user_id):
     t, al, ar = Playlist.import_user_playlists(user)
     mysql.connection.commit()
     click.echo('done. %s tracks, %s albums, %s artists.' % (t, al, ar))
+
+#-------------------------------------------------------------------------------
+#  Web Jobs
+#  see: https://github.com/projectkudu/kudu/wiki/WebJobs-API
+#-------------------------------------------------------------------------------
+@app.cli.command('invoke-webjob')
+@click.option('--job')
+@click.option('--args')
+def invoke_webjob(job, args):
+    url = 'https://clef2.scm.azurewebsites.net/api/triggeredwebjobs/%s/run?arguments=%s' % (job, args)
+    resp = requests.post(url, auth=HTTPBasicAuth(os.environ['WEBJOBS_USER_NAME'], os.environ['WEBJOBS_PASSWORD']))
+    if resp.status_code == 200:
+        click.echo('job complete.')
+    elif resp.status_code == 202:
+        click.echo('job submitted.')
+    else:
+        click.echo('%s. failed. %s' % (resp.status_code, resp.content))
+
+@app.cli.command('webjob')
+@click.option('--job')
+def webjob(job):
+    """Gets summary information for a webjob."""
+    url = 'https://clef2.scm.azurewebsites.net/api/triggeredwebjobs/%s' % job
+    resp = requests.get(url, auth=HTTPBasicAuth(os.environ['WEBJOBS_USER_NAME'], os.environ['WEBJOBS_PASSWORD']))
+    if resp.status_code == 200:
+        result = jsonpickle.decode(resp.content)
+        click.echo()
+        click.echo('WebJob')
+        click.echo('------')
+        for prop in ['name', 'type', 'error', 'url', 'run_command', 'history_url', 'extra_info_url']:
+            click.echo('%s:\t%s' % (prop, result[prop]))
+        click.echo('latest_run:')
+        latest_run = result['latest_run']
+        for prop in ['id', 'name', 'status', 'start_time', 'end_time', 'duration', 'output_url', 'error_url', 'url', 'trigger']:
+            click.echo('\t%s:\t%s' % (prop, latest_run[prop]))
+    elif resp.status_code == 404:
+        click.echo('Job does not exist.')
+    else:
+        click.echo('%s. failed. %s' % (resp.status_code, resp.content))
+
+@app.cli.command('webjob-history')
+@click.option('--job')
+def webjob_history(job):
+    """Gets the history of runs for a web job."""
+    url = 'https://clef2.scm.azurewebsites.net/api/triggeredwebjobs/%s/history' % job
+    resp = requests.get(url, auth=HTTPBasicAuth(os.environ['WEBJOBS_USER_NAME'], os.environ['WEBJOBS_PASSWORD']))
+    if resp.status_code == 200:
+        res = jsonpickle.decode(resp.content)
+        for job in res:
+            click.echo(job)
+    elif resp.status_code == 404:
+        click.echo('Not run or job does not exist.')
+    else:
+        click.echo('%s. failed. %s' % (resp.status_code, resp.content))
+
+@app.cli.command('webjob-run')
+@click.option('--job')
+@click.option('--run')
+def webjob_run(job, run):
+    """Gets a specific run of a web job."""
+    url = 'https://clef2.scm.azurewebsites.net/api/triggeredwebjobs/%s/history/%s' % (job, run)
+    auth = HTTPBasicAuth(os.environ['WEBJOBS_USER_NAME'], os.environ['WEBJOBS_PASSWORD'])
+    resp = requests.get(url, auth=auth)
+    if resp.status_code == 200:
+        result = jsonpickle.decode(resp.content)
+        for prop in ['job_name', 'id', 'name', 'status', 'start_time', 'end_time', 'duration',
+                     'output_url', 'error_url', 'url', 'trigger']:
+            click.echo('\t%s:\t%s' % (prop, result[prop]))
+        resp = requests.get(result['output_url'], auth=auth)
+        if resp.status_code == 200:
+            click.echo('-------')
+            click.echo('output:')
+            click.echo('-------')
+            click.echo(resp.content)
+            click.echo('-------')
+        else:
+            click.echo('failed to fetch output. %s. %s' % (resp.status_code, resp.content))
+    elif resp.status_code == 404:
+        click.echo('Not run or job does not exist.')
+    else:
+        click.echo('%s. failed. %s' % (resp.status_code, resp.content))
 
 @app.cli.command('import-playlist-images')
 @click.option('--user-id')

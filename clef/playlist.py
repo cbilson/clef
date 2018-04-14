@@ -250,7 +250,9 @@ class Playlist:
         Reloads all of a users playlists from spotify.
         Returns the count of tracks, albums, and artists.
         """
-        return Playlist._import_user_playlists(user, force_reimport=force_reimport)
+        result = Playlist._import_user_playlists(user, force_reimport=force_reimport)
+        user.status = 'Ready'
+        return result
 
     def remove_playlists(user, playlist_id=None):
         cursor = mysql.connection.cursor()

@@ -3,9 +3,8 @@ from datetime import datetime, timedelta
 from clef import mysql, app
 
 class User:
-    def __init__(self, id, name='', email='', joined=None,
-                 average_dancability=0.0, access_token=None,
-                 token_expiration=None, refresh_token=None):
+    def __init__(self, id, name='', email='', joined=None, average_dancability=0.0, access_token=None,
+                 token_expiration=None, refresh_token=None, status=None):
         self.id = id
         self.name = name
         self.email = email
@@ -14,6 +13,8 @@ class User:
         self.access_token = access_token
         self.token_expiration = token_expiration
         self.refresh_token = refresh_token
+        self.status = status
+        self.is_admin = id in {'1228285312', 'hannparkk', 'cbilson'}
 
     def __repr__(self):
         ctor_args = [
@@ -24,16 +25,18 @@ class User:
             'average_dancability=%s' % self.average_dancability,
             'access_token=None' if not self.access_token else 'access_token="%s"' % self.access_token,
             'token_expiration=None' if not self.token_expiration else 'token_expiration=%s' % repr(self.token_expiration),
-            'refresh_token=None' if not self.refresh_token else 'refresh_token="%s"' % self.refresh_token]
+            'refresh_token=None' if not self.refresh_token else 'refresh_token="%s"' % self.refresh_token,
+            'status=None' if not self.status else 'status="%s"' % self.status]
         return 'User(%s)' % ', '.join(ctor_args)
 
     def load(id):
         cursor = mysql.connection.cursor()
-        cursor.execute('select name, email, joined, average_dancability, '
-                       'access_token, token_expiration, refresh_token '
-                       'from User '
-                       'where id = %s',
-                       (id,))
+        cursor.execute("""
+        select   name, email, joined, average_dancability,
+                 access_token, token_expiration, refresh_token, status
+        from     User
+        where    id = %s
+        """, (id,))
 
         if cursor.rowcount == 0:
             return None
@@ -47,6 +50,7 @@ class User:
         user.access_token = row[4]
         user.token_expiration = row[5]
         user.refresh_token = row[6]
+        user.status = row[7]
         app.logger.debug('Loaded user %s' % (user.id))
         return user
 
@@ -88,21 +92,21 @@ class User:
 
     def save(self):
         cursor = mysql.connection.cursor()
-        cursor.execute('insert into User(id, name, email, '
-                       'joined, average_dancability, access_token, '
-                       'token_expiration, refresh_token) '
-                       'values(%s, %s, %s, %s, %s, %s, %s, %s) '
-                       'on duplicate key update '
-                       'name=%s, email=%s, joined=%s, average_dancability=%s, '
-                       'access_token=%s, token_expiration=%s, '
-                       'refresh_token=%s',
+        cursor.execute("""
+        insert into User(id, name, email, joined, average_dancability, access_token,
+                    token_expiration, refresh_token, status)
+                    values(%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        on duplicate key
+        update      name=%s, email=%s, joined=%s, average_dancability=%s, access_token=%s,
+                    token_expiration=%s, refresh_token=%s, status=%s""",
                        (self.id, self.name, self.email,
                         self.joined, self.average_dancability,
                         self.access_token, self.token_expiration,
-                        self.refresh_token, self.name, self.email,
+                        self.refresh_token, self.status,
+                        self.name, self.email,
                         self.joined, self.average_dancability,
                         self.access_token, self.token_expiration,
-                        self.refresh_token))
+                        self.refresh_token, self.status))
         app.logger.info('User %s updated' % self.id)
 
     def display_name(self):
@@ -114,35 +118,57 @@ class User:
 class UserArtistOverview:
     def for_user(user):
         cursor = mysql.connection.cursor()
-        cursor.execute('SELECT T6.Users_Artists AS Users_Artists, COUNT(*) - 1 AS Number_of_Songs_by_the_Artist '
-                       'FROM ('
-                       'SELECT DISTINCT artist.name AS Users_Artists '
-                       'FROM albumartist, artist '
-                       'WHERE album_id IN ( '
-                       'SELECT album_id '
-                       'FROM track '
-                       'WHERE track.id IN ( '
-                       'SELECT DISTINCT track_id '
-                       'FROM playlisttrack '
-                       'WHERE playlisttrack.playlist_id IN ( '
-                       'SELECT DISTINCT id AS playlist_id '
-                       'FROM playlist '
-                       'WHERE playlist.owner = %s))) AND albumartist.artist_id = artist.id '
-                       'UNION ALL '
-                       'SELECT artist.name AS Users_Artists '
-                       'FROM albumartist, artist '
-                       'WHERE album_id IN ( '
-                       'SELECT album_id '
-                       'FROM track '
-                       'WHERE track.id IN ( '
-                       'SELECT track_id '
-                       'FROM playlisttrack '
-                       'WHERE playlisttrack.playlist_id IN ( '
-                       'SELECT DISTINCT id AS playlist_id '
-                       'FROM playlist '
-                       'WHERE playlist.owner = %s))) AND albumartist.artist_id = artist.id '
-                       ') AS T6 '
-                       'GROUP BY T6.Users_Artists',
+        cursor.execute("""
+        SELECT T6.Users_Artists AS Users_Artists, COUNT(*) - 1 AS Number_of_Songs_by_the_Artist
+                       FROM (
+                       SELECT DISTINCT artist.name AS Users_Artists
+                       FROM albumartist, artist
+                       WHERE album_id IN (
+                       SELECT album_id
+                       FROM track
+                       WHERE track.id IN (
+                       SELECT DISTINCT track_id
+                       FROM playlisttrack
+                       WHERE playlisttrack.playlist_id IN (
+                       SELECT DISTINCT id AS playlist_id
+                       FROM playlist
+                       WHERE playlist.owner = %s))) AND albumartist.artist_id = artist.id
+                       UNION ALL
+                       SELECT artist.name AS Users_Artists
+                       FROM albumartist, artist
+                       WHERE album_id IN (
+                       SELECT album_id
+                       FROM track
+                       WHERE track.id IN (
+                       SELECT track_id
+                       FROM playlisttrack
+                       WHERE playlisttrack.playlist_id IN (
+                       SELECT DISTINCT id AS playlist_id
+                       FROM playlist
+                       WHERE playlist.owner = %s))) AND albumartist.artist_id = artist.id
+                       ) AS T6
+                       GROUP BY T6.Users_Artists""",
                        (user.id, user.id))
-
         return [(row[0], row[1]) for row in cursor]
+
+
+class UserListEntry:
+    def __init__(self, id, name, joined, email, status):
+        self.id = id
+        self.name = name
+        self.joined = joined
+        self.email = email
+        self.status = status
+
+class UserList:
+    def __init__(self, users):
+        self.users = users
+        self.total = len(users)
+
+    def get():
+        cursor = mysql.connection.cursor()
+        cursor.execute("""
+        select  id, name, joined, email, status
+        from    User
+        """)
+        return UserList([UserListEntry(row[0],row[1],row[2],row[3],row[4]) for row in cursor])

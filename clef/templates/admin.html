@@ -1,0 +1,65 @@
+{% extends "layout.html" %}
+{% block head %}
+<style>
+</style>
+{% endblock %}
+{% block nav %}
+<li><a id="refresh-data" href="#">Refresh My Data<i id="refresh-data-icon" class="material-icons left">refresh</i></a></li>
+<li><a href="playlists">Playlists</a></li>
+<li><a href="artists">Artists</a></li>
+{% if user.is_admin %}
+<li class="divider"></li>
+<li><a href="/admin">Administration</a></li>
+{% endif %}
+<!-- <li><a href="compare-to/cbilson">Compare with cbilson</a></li> -->
+{% endblock %}
+{% block body %}
+<div class="row">
+  <h3>Users</h3>
+  <table class="striped highlight">
+    <thead>
+      <tr>
+        <th>Id</th>
+        <th>Name</th>
+        <th>Joined</th>
+        <th>e-mail</th>
+        <th>Status</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for user in user_list.users %}
+      <tr>
+        <td>{{user.id}}</td>
+        <td>{{user.name}}</td>
+        <td>{{user.joined}}</td>
+        <td>{{user.email}}</td>
+        <td>
+          <div class="user-status">{{user.status}}</div>
+          <div class="user-operation hide">
+            Retrieving data...
+            <progress />
+          </div>
+        </td>
+        <td>
+          {% if user.status == 'New' %}
+          <a class="waves-effect waves-light btn-small import-button"
+             href="#!"
+             data-user-id="{{user.id}}">
+            <i class="material-icons">import_export</i>Import Playlists</a>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="6">Total: {{user_list.total}} users</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+{% endblock %}
+{% block scripts %}
+<script type="text/javascript" src="/static/admin.js?{{range(1000000)|random}}"></script>
+{% endblock %}

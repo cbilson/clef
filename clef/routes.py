@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from urllib.parse import unquote
 from flask import render_template, get_template_attribute, request, session, redirect, url_for, jsonify
 from clef.spotify import get_auth_url, get_auth_token, get_user, get_user_playlists
-from clef.user import User, UserArtistOverview
+from clef.user import User, UserArtistOverview, UserList
 from clef.playlist import Playlist, PlaylistSummaryView, PlaylistDetailsView
 from clef.helpers import dump_session
 from clef import app, mysql
@@ -98,6 +98,27 @@ def user_playlist_details(user_id, playlist_id):
     if session['user_id'] != user_id: abort(403)
     return jsonpickle.encode(PlaylistDetailsView.get(user_id, playlist_id), unpicklable=False)
 
+@app.route('/admin')
+def admin():
+    if 'user_id' not in session: abort(403)
+    user = User.load(session['user_id'])
+    if not user.is_admin: abort(403)
+    user_list = UserList.get()
+    return render_template('admin.html', user=user, user_list=user_list)
+
+@app.route('/admin/import/user/<user_id>')
+def admin_import_user(user_id):
+    if 'user_id' not in session: abort(403)
+    user = User.load(session['user_id'])
+    if not user.is_admin: abort(403)
+
+    if request.method == 'POST':
+        # start import
+        pass
+    elif request.method == 'GET':
+        # get status of existing import job
+        pass
+
 @app.route('/search')
 def search():
     cursor = mysql.connection.cursor()
@@ -140,6 +161,7 @@ def authorized():
     if not user:
         app.logger.info('Creating new user record for user id %s' % spotify_user['id'])
         user = User.from_json(spotify_user, token)
+        user.status = 'New'
     else:
         user.access_token = token['access_token']
         user.token_expiration = datetime.utcnow() + timedelta(seconds=token['expires_in'])
