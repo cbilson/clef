@@ -42,7 +42,7 @@
           </div>
         </td>
         <td>
-          {% if user.status == 'New' %}
+          {% if user.status == 'New' or True %}
           <a class="waves-effect waves-light btn-small import-button"
              href="#!"
              data-user-id="{{user.id}}">

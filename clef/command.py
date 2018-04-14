@@ -308,6 +308,7 @@ def invoke_webjob(job, args):
         click.echo('job complete.')
     elif resp.status_code == 202:
         click.echo('job submitted.')
+        click.echo('Location: %s' % resp.headers['Location'])
     else:
         click.echo('%s. failed. %s' % (resp.status_code, resp.content))
 

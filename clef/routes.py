@@ -1,7 +1,8 @@
 import base64, json, os, requests
 import jsonpickle
 from datetime import datetime, timedelta
-from urllib.parse import unquote
+from requests.auth import HTTPBasicAuth
+from urllib.parse import unquote, urlparse
 from flask import render_template, get_template_attribute, request, session, redirect, url_for, jsonify
 from clef.spotify import get_auth_url, get_auth_token, get_user, get_user_playlists
 from clef.user import User, UserArtistOverview, UserList
@@ -98,7 +99,7 @@ def user_playlist_details(user_id, playlist_id):
     if session['user_id'] != user_id: abort(403)
     return jsonpickle.encode(PlaylistDetailsView.get(user_id, playlist_id), unpicklable=False)
 
-@app.route('/admin')
+@app.route('/admin/users')
 def admin():
     if 'user_id' not in session: abort(403)
     user = User.load(session['user_id'])
@@ -106,18 +107,34 @@ def admin():
     user_list = UserList.get()
     return render_template('admin.html', user=user, user_list=user_list)
 
-@app.route('/admin/import/user/<user_id>')
+@app.route('/admin/import/user/<user_id>', methods=['POST'])
 def admin_import_user(user_id):
     if 'user_id' not in session: abort(403)
     user = User.load(session['user_id'])
     if not user.is_admin: abort(403)
 
-    if request.method == 'POST':
-        # start import
-        pass
-    elif request.method == 'GET':
-        # get status of existing import job
-        pass
+    url = 'https://clef2.scm.azurewebsites.net/api/triggeredwebjobs/import-user-playlists/run?arguments=%s' % user_id
+    app.logger.info('staring import for user_id %s' % user_id)
+    resp = requests.post(url, auth=HTTPBasicAuth(os.environ['WEBJOBS_USER_NAME'], os.environ['WEBJOBS_PASSWORD']))
+    if resp.status_code != 202: abort(resp.status_code)
+    location = resp.headers['Location']
+    url = urlparse(location)
+    job_id = url.path.split('/')[-1]
+    app.logger.info('import for user_id %s -> job_id %s' % (user_id, job_id))
+    return jsonify(dict(status='started', jobId=job_id)), resp.status_code
+
+@app.route('/admin/import/job/<id>', methods=['GET'])
+def admin_import_job(id):
+    if 'user_id' not in session: abort(403)
+    user = User.load(session['user_id'])
+    if not user.is_admin: abort(403)
+
+    url = 'https://clef2.scm.azurewebsites.net/api/triggeredwebjobs/import-user-playlists/history/%s' % id
+    resp = requests.get(url, auth=HTTPBasicAuth(os.environ['WEBJOBS_USER_NAME'], os.environ['WEBJOBS_PASSWORD']))
+    if resp.status_code != 200: abort(resp.status_code)
+    job_info = jsonpickle.decode(resp.content)
+    app.logger.debug('job %s, status %s, duration: %s' % (id, job_info['status'], job_info['duration']))
+    return resp.content
 
 @app.route('/search')
 def search():
