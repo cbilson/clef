@@ -253,6 +253,7 @@ class Playlist:
         result = Playlist._import_user_playlists(user, force_reimport=force_reimport)
         app.logger.debug('Setting user status to Ready')
         user.status = 'Ready'
+        user.save()
         return result
 
     def remove_playlists(user, playlist_id=None):
