@@ -1,4 +1,5 @@
 import os, sys, logging
+import clef.ver
 from logging import StreamHandler, Formatter
 from logging.handlers import RotatingFileHandler
 from flask import Flask
@@ -6,6 +7,11 @@ from flask_mysqldb import MySQL
 from traitlets.config import Config
 
 app = Flask(__name__)
+
+@app.context_processor
+def inject_build_ver():
+    return dict(build_ver=clef.ver.version, build_message=clef.ver.message, last_updated=clef.ver.last_updated)
+
 app.logger.handlers.clear()
 
 console = StreamHandler(sys.stdout)

@@ -54,6 +54,19 @@ IF /I "%IN_PLACE_DEPLOYMENT%" NEQ "1" (
   IF !ERRORLEVEL! NEQ 0 goto error
 )
 
+echo Setting build version
+git rev-parse --short HEAD > tmp.txt
+set /p TMP=<tmp.txt
+echo version='%TMP%' > %DEPLOYMENT_TARGET%\clef\ver.py
+
+git log --pretty=%%s -1 > tmp.txt
+set /p TMP=<tmp.txt
+echo message='%TMP%' >> %DEPLOYMENT_TARGET%\clef\ver.py
+
+git log --pretty=%%aI -1 > tmp.txt
+set /p TMP=<tmp.txt
+echo last_updated='%TMP%' >> %DEPLOYMENT_TARGET%\clef\ver.py
+
 echo Ensuring application log path exists
 set APP_LOGS=D:\home\LogFiles\Application
 if not exist %APP_LOGS% (

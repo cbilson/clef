@@ -37,6 +37,17 @@
     <div class="container" id="body-container">
       {% block body %}{% endblock %}
     </div>
+    <footer class="page-footer teal darken-2 grey-text text-lighten-3">
+      <div class="container">
+        <div class="row">
+          <ul>
+            <li>Commit: <a href="https://github.com/cbilson/clef/commit/{{build_ver}}">{{build_ver}}</a></li>
+            <li>Commit Message: {{build_message}}</li>
+            <li>Last updated: {{last_updated}}</li>
+          </ul>
+        </div>
+      </div>
+    </footer>
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0-beta/js/materialize.min.js"></script>
     <script type="text/javascript" src="/static/app.js?{{range(1000000)|random}}"></script>
     {% block scripts %}
