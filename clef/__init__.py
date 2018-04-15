@@ -25,7 +25,6 @@ app.config.update(DEBUG = True)
 log_path = os.getenv('LOG_PATH')
 log_name = os.getenv('LOG_NAME') or 'clef.log'
 if log_path:
-    app.logger.info('Adding RotatingFileHandler logging to %s/clef.log' % log_path)
     file_handler = RotatingFileHandler(log_path + '/clef.log', maxBytes = 1*1024*1024, backupCount = 100)
     file_handler.setFormatter(Formatter('%(asctime)s %(levelname)s: %(message)s -- %(module)s L%(lineno)s'))
     app.logger.addHandler(file_handler)
@@ -46,11 +45,6 @@ app.config.update(
     MYSQL_USER = os.getenv('MYSQL_DATABASE_USER'),
     MYSQL_PASSWORD = os.getenv('MYSQL_DATABASE_PASSWORD'))
 
-app.logger.info('Session cookie name: %s (Secure? %s)' % (app.config['SESSION_COOKIE_NAME'], app.config['SESSION_COOKIE_SECURE']))
-app.logger.info('Initializing MySQL connection to %s, database %s, user %s' % (
-    app.config['MYSQL_HOST'],
-    app.config['MYSQL_DB'],
-    app.config['MYSQL_USER']))
 mysql = MySQL(app)
 
 # ipython initialization, for `flask shell`
