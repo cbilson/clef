@@ -153,12 +153,13 @@ class UserArtistOverview:
 
 
 class UserListEntry:
-    def __init__(self, id, name, joined, email, status):
+    def __init__(self, id, name, joined, email, status, playlist_count):
         self.id = id
         self.name = name
         self.joined = joined
         self.email = email
         self.status = status
+        self.playlist_count = playlist_count
 
 class UserList:
     def __init__(self, users):
@@ -168,7 +169,9 @@ class UserList:
     def get():
         cursor = mysql.connection.cursor()
         cursor.execute("""
-        select  id, name, joined, email, status
-        from    User
+        select    u.id, u.name, u.joined, u.email, u.status, count(pf.user_id)
+        from      User u
+                  left outer join PlaylistFollow pf on u.id = pf.user_id
+        group by  u.id, u.name, u.joined, u.email, u.status;
         """)
-        return UserList([UserListEntry(row[0],row[1],row[2],row[3],row[4]) for row in cursor])
+        return UserList([UserListEntry(row[0],row[1],row[2],row[3],row[4],row[5]) for row in cursor])
