@@ -398,3 +398,50 @@ class PlaylistDetailsView:
         view.genres = {row[0]:row[1] for row in cursor}
 
         return view
+
+class AdminPlaylistSummaryViewEntry:
+    def __init__(self, row):
+        self.id = row[0]
+        self.owner = row[1]
+        self.name = row[2]
+        self.description = row[3]
+        self.track_count = row[4]
+        self.follower_count = None
+        self.genres = []
+
+class AdminPlaylistSummaryView:
+    def __init__(self, offset=0, limit=100):
+        self.offset = offset
+        self.limit = limit
+        cursor = mysql.connection.cursor()
+        cursor.execute("""
+        -- total playlists
+        select count(*) from Playlist;
+
+        select          p.id, p.owner, p.name, p.description, count(pt.playlist_id)
+        from            Playlist p
+                        left outer join PlaylistTrack pt on p.id = pt.playlist_id
+        group by        p.id, p.owner, p.name, p.description
+        order by        p.name
+        limit           %s, %s;
+
+        select          p.id, count(pf.user_id)
+        from            Playlist p
+                        left outer join PlaylistFollow pf on p.id = pf.playlist_id
+        group by        p.id
+        order by        p.name
+        limit           100, 100;
+        """,
+                       (offset, limit))
+        row = cursor.fetchone()
+        self.total_playlists = row[0]
+        self.has_more = self.total_playlists > (self.offset + self.limit)
+
+        cursor.nextset()
+        playlists = {row[0]:AdminPlaylistSummaryViewEntry(row) for row in cursor}
+
+        cursor.nextset()
+        for row in cursor:
+            playlists[row[0]].follower_count = row[1]
+
+        self.playlists = playlists.values

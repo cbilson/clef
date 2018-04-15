@@ -151,22 +151,29 @@ class UserArtistOverview:
                        (user.id, user.id))
         return [(row[0], row[1]) for row in cursor]
 
-
 class UserListEntry:
-    def __init__(self, id, name, joined, email, status, playlist_count):
-        self.id = id
-        self.name = name
-        self.joined = joined
-        self.email = email
-        self.status = status
-        self.playlist_count = playlist_count
+    def __init__(self, row):
+        self.id = row[0]
+        self.name = row[1]
+        self.joined = row[2]
+        self.email = row[3]
+        self.status = row[4]
+        self.playlist_count = row[5]
+
+    def get(user_id):
+        cursor = mysql.connection.cursor()
+        cursor.execute("""
+        select    u.id, u.name, u.joined, u.email, u.status, count(pf.user_id)
+        from      User u
+                  left outer join PlaylistFollow pf on u.id = pf.user_id
+        where     user_id = %s
+        group by  u.id, u.name, u.joined, u.email, u.status;
+        """, (user_id,))
+        row = cursor.fetchone()
+        return UserListEntry(row)
 
 class UserList:
-    def __init__(self, users):
-        self.users = users
-        self.total = len(users)
-
-    def get():
+    def __init__(self):
         cursor = mysql.connection.cursor()
         cursor.execute("""
         select    u.id, u.name, u.joined, u.email, u.status, count(pf.user_id)
@@ -174,4 +181,6 @@ class UserList:
                   left outer join PlaylistFollow pf on u.id = pf.user_id
         group by  u.id, u.name, u.joined, u.email, u.status;
         """)
-        return UserList([UserListEntry(row[0],row[1],row[2],row[3],row[4],row[5]) for row in cursor])
+        self.users = [UserListEntry(row) for row in cursor]
+        self.total = len(self.users)
+        self.total_new = len([u for u in self.users if u.status == 'New' or u.playlist_count == 0])

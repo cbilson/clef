@@ -15,51 +15,64 @@
 {% endblock %}
 {% block body %}
 <div class="row">
-  <h3>Users</h3>
-  <table class="striped highlight">
-    <thead>
-      <tr>
-        <th>Id</th>
-        <th>Name</th>
-        <th>Joined</th>
-        <th>e-mail</th>
-        <th>Playlists</th>
-        <th>Status</th>
-        <th>Action</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for user in user_list.users %}
-      <tr>
-        <td>{{user.id}}</td>
-        <td>{{user.name}}</td>
-        <td>{{user.joined}}</td>
-        <td>{{user.email}}</td>
-        <td>{{user.playlist_count}}</td>
-        <td>
-          <span class="user-status">{{user.status}}</span>
-          <progress class="hide user-operation-progress" />
-        </td>
-        <td>
-          {% if user.status != 'Ready' %}
-          <a class="waves-effect waves-light btn-small import-button"
-             href="#!"
-             data-user-id="{{user.id}}">
-            <i class="material-icons">import_export</i>Import Playlists</a>
-          {% endif %}
-          <a class="waves-effect waves-light btn-small results-button hide"
-             href="#!"
-             target="_blank">Results</a>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-    <tfoot>
-      <tr>
-        <td colspan="6">Total: {{user_list.total}} users</td>
-      </tr>
-    </tfoot>
-  </table>
+  <div class="col s12">
+    <ul class="tabs">
+      <li class="tab col s3"><a class="active" href="#users">Users</a></li>
+      <li class="tab col s3"><a href="#playlists">Playlists</a></li>
+    </ul>
+  </div>
+  <div id="users" class="col s12">
+    <table class="striped highlight">
+      <thead>
+        <tr>
+          <th>Id</th>
+          <th>Name</th>
+          <th>Joined</th>
+          <th>e-mail</th>
+          <th>Playlists</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for user in user_list.users %}
+        <tr>
+          <td>{{user.id}}</td>
+          <td>{{user.name}}</td>
+          <td>{{user.joined}}</td>
+          <td>{{user.email}}</td>
+          <td class="playlist-count">{{user.playlist_count}}</td>
+          <td>
+            <span class="user-status">{{user.status}}</span>
+            <span class="hide user-operation-progress">
+            <progress />
+            <a class="user-operation-log" href="#!">log</a>
+            </span>
+          </td>
+          <td>
+            {% if user.status != 'Ready' %}
+            <a class="waves-effect waves-light btn-small import-button"
+               href="#!"
+               data-user-id="{{user.id}}">
+              <i class="material-icons">import_export</i>Import Playlists</a>
+            {% endif %}
+            <a class="waves-effect waves-light btn-small results-button hide"
+               href="#!"
+               target="_blank">Results</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="6">Total: {{user_list.total}} users, {{user_list.total_new}} new.</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+  <div id="playlists" class="col s12">
+    <h3>TODO: Playlists</h3>
+  </div>
 </div>
 {% endblock %}
 {% block scripts %}

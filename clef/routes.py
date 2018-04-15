@@ -104,7 +104,7 @@ def admin():
     if 'user_id' not in session: abort(403)
     user = User.load(session['user_id'])
     if not user.is_admin: abort(403)
-    user_list = UserList.get()
+    user_list = UserList()
     return render_template('admin.html', user=user, user_list=user_list)
 
 def webjobs_auth():
@@ -151,6 +151,13 @@ def admin_import_job_results(job_id):
     url = 'https://clef2.scm.azurewebsites.net/vfs/data/jobs/triggered/import-user-playlists/%s/output_log.txt' % job_id
     resp = requests.get(url, auth=webjobs_auth())
     return resp.content, resp.status_code, {'Content-Type': 'text/plain; charset=utf-8'}
+
+@app.route('/admin/playlists')
+def admin_playlists():
+    if 'user_id' not in session: abort(403)
+    user = User.load(session['user_id'])
+    if not user.is_admin: abort(403)
+
 
 @app.route('/search')
 def search():
