@@ -77,18 +77,27 @@ class User:
 
         self.save()
 
+    # TODO: rename 'follow_playlist'
     def add_playlist(self, playlist):
+        self.follow_playlist_id(playlist.id)
+
+    def follow_playlist_id(self, playlist_id):
+        app.logger.debug("User %s following playlist %s." % (self.id, playlist_id))
         cursor = mysql.connection.cursor()
         cursor.execute('insert into PlaylistFollow(playlist_id, user_id) '
                        'values(%s, %s) '
                        'on duplicate key update playlist_id=%s',
-                       (playlist.id, self.id, playlist.id))
+                       (playlist_id, self.id, playlist_id))
 
     def remove_playlist(self, playlist):
+        self.unfollow_playlist_id(playlist.id)
+
+    def unfollow_playlist_id(self, playlist_id):
+        app.logger.debug("User %s unfollowing playlist %s." % (self.id, playlist_id))
         cursor = mysql.connection.cursor()
         cursor.execute('delete from PlaylistFollow '
                        'where playlist_id=%s and user_id=%s',
-                       (playlist.id, self.id))
+                       (playlist_id, self.id))
 
     def save(self):
         cursor = mysql.connection.cursor()

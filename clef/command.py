@@ -1,5 +1,6 @@
 import os
 import re
+import time
 import sys
 import textwrap
 import virtualenv
@@ -17,7 +18,7 @@ from colorama import Fore, Back, Style
 from requests.auth import HTTPBasicAuth
 
 from clef import app, mysql
-from clef.user import User
+from clef.user import User, UserList
 from clef.playlist import Playlist, PlaylistSummaryView, PlaylistDetailsView
 from clef.artist import Artist
 from clef.album import Album
@@ -294,6 +295,86 @@ def import_user_playlists(user_id):
     mysql.connection.commit()
     click.echo('done. %s tracks, %s albums, %s artists.' % (t, al, ar))
 
+@app.cli.command('refresh-playlists')
+def refresh_playlists():
+    start = time.time()
+    # Get all current user's playlists.
+    cur = mysql.connection.cursor()
+
+    # Get each user's playlists and snapshot ids.
+    cur.execute("""
+        select          u.id, p.id
+        from            User u
+                        inner join PlaylistFollow pf on u.id = pf.user_id
+                        inner join Playlist p on pf.playlist_id = p.id
+        order by        u.id;
+
+        select          id, snapshot_id
+        from            Playlist;
+    """)
+    user_playlists = {}
+    for uid, pid in cur:
+        if uid not in user_playlists:
+            user_playlists[uid] = set()
+
+        user_playlists[uid].add(pid)
+
+    cur.nextset()
+    playlist_snapshot_ids = {row[0]:row[1] for row in cur}
+
+    users = dict()
+    stale_playlists = set()
+    checked_playlists = set()
+    new_follows = 0
+    unfollows = 0
+    for uid, pids in user_playlists.items():
+        users[uid] = User.load(uid)
+        spotify_playlists = spotify.get_user_playlists(users[uid])
+
+        # look at user's current playlists in spotify
+        spotify_pids = set()
+        for sp in spotify_playlists:
+            pid = sp['id']
+            spotify_pids.add(pid)
+            if pid not in checked_playlists:
+                # only need to do this once per playlist
+                if pid not in playlist_snapshot_ids:   # must be new
+                    playlist = Playlist.from_json(sp)
+                    playlist.save()  # status='New', a separate job will come around and import it
+                elif sp['snapshot_id'] != playlist_snapshot_ids[pid]:  # our copy is stale
+                    stale_playlists.add(pid)
+
+                checked_playlists.add(pid)
+
+            if pid not in pids:  # must be a new playlist the user started following
+                users[uid].follow_playlist_id(pid)
+                new_follows = new_follows + 1
+
+        # remove any playlists the user is no longer following
+        no_longer_following = [p for p in pids if p not in spotify_pids]
+        for p in no_longer_following:
+            unfollows = unfollows + 1
+            users[uid].unfollow_playlist_id(p)
+
+    # mark each stale playlist once (not once per user that follows the playlist)
+    for pid in stale_playlists:
+        Playlist.mark_stale(pid)
+
+    mysql.connection.commit()
+    #mysql.connection.rollback()
+
+    elapsed = time.time() - start
+    click.echo('--------------------------------------------------------------------------------')
+    click.echo('done. Elapsed time: %s' % elapsed)
+    click.echo()
+    click.echo('Users Refreshed:        %s' % len(user_playlists))
+    click.echo('Playlists Checked:      %s' % len(checked_playlists))
+    click.echo('Orphan Playlists:       %s' % (len(playlist_snapshot_ids) - len(checked_playlists)))
+    click.echo('Stale Playlists:        %s' % len(stale_playlists))
+    click.echo('New Playlist Follows:   %s' % new_follows)
+    click.echo('Playlist Unfollows:     %s' % unfollows)
+    click.echo('--------------------------------------------------------------------------------')
+
 #-------------------------------------------------------------------------------
 #  Web Jobs
 #  see: https://github.com/projectkudu/kudu/wiki/WebJobs-API
@@ -483,11 +564,11 @@ def refresh_artists(user_id, artist_ids=[], limit=1000):
     if len(artist_ids) < 1:
         cursor = mysql.connection.cursor()
         cursor.execute('''
-        select distinct a.id
-        from   Artist a
-               left outer join ArtistGenre ag on a.id = ag.artist_id
-        where  isnull(ag.genre)
-        limit %s''' % limit)
+                          select distinct a.id
+                          from   Artist a
+                          left outer join ArtistGenre ag on a.id = ag.artist_id
+                          where  isnull(ag.genre)
+                          limit %s''' % limit)
         artist_ids = [row[0] for row in cursor]
 
     for artist in [Artist.import_json(sa) for sa in spotify.get_artists(user, artist_ids)]:

@@ -10,13 +10,14 @@ from clef.track import Track
 from clef.album import Album
 
 class Playlist:
-    def __init__(self, id, owner=None, name=None, description=None, public=False, snapshot_id=None):
+    def __init__(self, id, owner=None, name=None, description=None, public=False, snapshot_id=None, status='New'):
         self.id = id
         self.owner = owner
         self.name = name
         self.description = description
         self.public = False
         self.snapshot_id = snapshot_id
+        self.status = status
 
     def __repr__(self):
         ctor_args = [
@@ -25,15 +26,16 @@ class Playlist:
             'name=None' if not self.name else 'name="%s"' % self.name,
             'description=None' if not self.description else 'description="%s"' % self.description,
             'public=%s' % self.public,
-            'snapshot_id=None' if not self.snapshot_id else 'snapshot_id="%s"' % self.snapshot_id]
+            'snapshot_id=None' if not self.snapshot_id else 'snapshot_id="%s"' % self.snapshot_id,
+            'status="%s"' % self.status]
         return 'Playlist(%s)' % ', '.join(ctor_args)
 
     def _from_row(row):
-        if row: return Playlist(row[0], row[1], row[2], row[3], row[4], row[5])
+        if row: return Playlist(row[0], row[1], row[2], row[3], row[4], row[5], row[6])
 
     def load(id):
         cursor = mysql.connection.cursor()
-        cursor.execute('select id, owner, name, description, public, snapshot_id '
+        cursor.execute('select id, owner, name, description, public, snapshot_id, status '
                        'from Playlist '
                        'where id = %s',
                        (id,))
@@ -43,7 +45,7 @@ class Playlist:
 
     def for_user(user):
         cursor = mysql.connection.cursor()
-        cursor.execute('select p.id, p.owner, p.name, p.description, p.public, p.snapshot_id '
+        cursor.execute('select p.id, p.owner, p.name, p.description, p.public, p.snapshot_id, status '
                        'from Playlist p '
                        '  inner join PlaylistFollow pf on p.id = pf.playlist_id '
                        'where pf.user_id = %s',
@@ -51,11 +53,15 @@ class Playlist:
         return [Playlist._from_row(row) for row in cursor]
 
     def from_json(json):
-        return Playlist(json['id'], json['owner']['id'], json['name'], json['description'],
+        return Playlist(json['id'], json['owner']['id'], json['name'], json.get('description'),
                         json['public'], json['snapshot_id'])
 
     def delete(self):
         mysql.connection.cursor().execute('delete from Playlist where id = %s', (self.id,))
+
+    def mark_stale(id):
+        app.logger.debug('Playlist %s is stale' % id)
+        mysql.connection.cursor().execute("update Playlist set status='Stale' where id = %s", (id,))
 
     def add_track(self, track, added_at, added_by):
         app.logger.debug('Adding track %s to playlist %s, added_at=%s, added_by=%s'
@@ -86,12 +92,12 @@ class Playlist:
     def save(self):
         cursor = mysql.connection.cursor()
         cursor.execute(
-            'insert into Playlist(id, owner, name, description, public, snapshot_id) '
-            'values (%s, %s, %s, %s, %s, %s) '
+            'insert into Playlist(id, owner, name, description, public, snapshot_id, status) '
+            'values (%s, %s, %s, %s, %s, %s, %s) '
             'on duplicate key update '
-            'owner=%s, name=%s, description=%s, public=%s, snapshot_id=%s',
-            (self.id, self.owner, self.name, self.description, self.public, self.snapshot_id,
-             self.owner, self.name, self.description, self.public, self.snapshot_id))
+            'owner=%s, name=%s, description=%s, public=%s, snapshot_id=%s, status=%s',
+            (self.id, self.owner, self.name, self.description, self.public, self.snapshot_id, self.status,
+             self.owner, self.name, self.description, self.public, self.snapshot_id, self.status))
 
     def import_playlist(user, pl_id, owner_id, albums,  artists, tracks):
         new_track_count = 0
@@ -181,6 +187,9 @@ class Playlist:
         for item_js in items_js:
             added_by = None if 'added_by' not in items_js or item_js['added_by'] is None else item_js['added_by']['id']
             pl.add_track(tracks[item_js['track']['id']], item_js['added_at'], added_by)
+
+        pl.status = 'Ready'
+        pl.save()
 
         return pl, new_track_count, new_album_count, new_artist_count
 
