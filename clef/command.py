@@ -408,8 +408,10 @@ def webjob(job):
             click.echo('%s:\t%s' % (prop, result[prop]))
         click.echo('latest_run:')
         latest_run = result['latest_run']
-        for prop in ['id', 'name', 'status', 'start_time', 'end_time', 'duration', 'output_url', 'error_url', 'url', 'trigger']:
-            click.echo('\t%s:\t%s' % (prop, latest_run[prop]))
+        if latest_run is not None:
+            for prop in ['id', 'name', 'status', 'start_time', 'end_time', 'duration', 'output_url', 'error_url', 'url', 'trigger']:
+                click.echo('\t%s:\t%s' % (prop, latest_run[prop]))
+
     elif resp.status_code == 404:
         click.echo('Job does not exist.')
     else:
