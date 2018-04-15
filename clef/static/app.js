@@ -1,4 +1,5 @@
 M.AutoInit();
+M.Tabs.init(document.querySelectorAll('.tabs'));
 
 var pendingSearch = null;
 var searchText = document.getElementById('search-text');

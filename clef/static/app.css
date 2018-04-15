@@ -1,8 +1,13 @@
 footer.page-footer {
     position: fixed;
+    z-index: 1000;
     bottom: 0;
     width: 100%;
     padding-top: 8px;
+}
+
+body {
+    margin-bottom: 90px;
 }
 
 footer ul { margin: 0; }

@@ -126,18 +126,21 @@ def admin_import_user(user_id):
     app.logger.info('import for user_id %s -> job_id %s' % (user_id, job_id))
     return jsonify(dict(status='started', jobId=job_id)), resp.status_code
 
-@app.route('/admin/import/job/<id>', methods=['GET'])
-def admin_import_job(id):
+@app.route('/admin/import/user/<user_id>/job/<job_id>', methods=['GET'])
+def admin_import_job(user_id, job_id):
     if 'user_id' not in session: abort(403)
     user = User.load(session['user_id'])
     if not user.is_admin: abort(403)
 
-    url = 'https://clef2.scm.azurewebsites.net/api/triggeredwebjobs/import-user-playlists/history/%s' % id
+    url = 'https://clef2.scm.azurewebsites.net/api/triggeredwebjobs/import-user-playlists/history/%s' % job_id
     resp = requests.get(url, auth=webjobs_auth())
     if resp.status_code != 200: abort(resp.status_code)
     job_info = jsonpickle.decode(resp.content)
     app.logger.debug('job %s, status %s, duration: %s' % (id, job_info['status'], job_info['duration']))
-    return resp.content
+    if job_info['status'] == 'Success':
+        user = UserListEntry.get(user_id)
+        job_info['userInfo'] = jsonpickle.encode(user, unpicklable=True)
+    return jsonify(job_info)
 
 @app.route('/admin/import/job/<job_id>/results', methods=['GET'])
 def admin_import_job_results(job_id):
