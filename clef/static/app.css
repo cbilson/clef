@@ -1,3 +1,12 @@
+footer.page-footer {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    padding-top: 8px;
+}
+
+footer ul { margin: 0; }
+
 #nav-drop-down {
     min-width: 250px;
     top: -65px;
