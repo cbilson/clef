@@ -5,8 +5,8 @@ from requests.auth import HTTPBasicAuth
 from urllib.parse import unquote, urlparse
 from flask import render_template, get_template_attribute, request, session, redirect, url_for, jsonify
 from clef.spotify import get_auth_url, get_auth_token, get_user, get_user_playlists
-from clef.user import User, UserArtistOverview, UserList
-from clef.playlist import Playlist, PlaylistSummaryView, PlaylistDetailsView
+from clef.user import User, UserArtistOverview, UserList, UserListEntry
+from clef.playlist import Playlist, PlaylistSummaryView, PlaylistDetailsView, AdminPlaylistSummaryView
 from clef.helpers import dump_session
 from clef import app, mysql
 
@@ -117,6 +117,10 @@ def admin_import_user(user_id):
     if not user.is_admin: abort(403)
 
     url = 'https://clef2.scm.azurewebsites.net/api/triggeredwebjobs/import-user-playlists/run?arguments=%s' % user_id
+    target_user = User.load(user_id)
+    target_user.status = 'Importing'
+    target_user.save()
+
     app.logger.info('staring import for user_id %s' % user_id)
     resp = requests.post(url, auth=webjobs_auth())
     if resp.status_code != 202: abort(resp.status_code)
@@ -158,6 +162,9 @@ def admin_playlists():
     user = User.load(session['user_id'])
     if not user.is_admin: abort(403)
 
+    offset = request.args.get('offset')
+    limit = request.args.get('limit')
+    return jsonpickle.encode(AdminPlaylistSummaryView(offset, limit), unpicklable=False)
 
 @app.route('/search')
 def search():

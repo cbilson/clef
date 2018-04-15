@@ -75,3 +75,10 @@ li.track:hover { animation: track-hover 0.8s; }
 img.cover.big { height: 240px; }
 
 .scroll-list { height: 500px; overflow: scroll;}
+
+#playlists-preload {
+    position: absolute;
+    top:50%;
+    left:50%;
+    margin: -50px 0px 0px -50px;
+}

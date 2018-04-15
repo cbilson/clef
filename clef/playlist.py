@@ -411,11 +411,10 @@ class AdminPlaylistSummaryViewEntry:
 
 class AdminPlaylistSummaryView:
     def __init__(self, offset=0, limit=100):
-        self.offset = offset
-        self.limit = limit
+        self.offset = 0
+        self.limit = 100
         cursor = mysql.connection.cursor()
         cursor.execute("""
-        -- total playlists
         select count(*) from Playlist;
 
         select          p.id, p.owner, p.name, p.description, count(pt.playlist_id)
@@ -430,9 +429,8 @@ class AdminPlaylistSummaryView:
                         left outer join PlaylistFollow pf on p.id = pf.playlist_id
         group by        p.id
         order by        p.name
-        limit           100, 100;
-        """,
-                       (offset, limit))
+        limit           %s, %s;
+        """, (self.offset, self.limit, self.offset, self.limit))
         row = cursor.fetchone()
         self.total_playlists = row[0]
         self.has_more = self.total_playlists > (self.offset + self.limit)
@@ -442,6 +440,7 @@ class AdminPlaylistSummaryView:
 
         cursor.nextset()
         for row in cursor:
-            playlists[row[0]].follower_count = row[1]
+            if row[0] in playlists:
+                playlists[row[0]].follower_count = row[1]
 
-        self.playlists = playlists.values
+        self.playlists = playlists.values()

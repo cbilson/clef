@@ -69,3 +69,37 @@ for (var i = 0; i < importButtons.length; i++) {
     xhr.send();
   });
 }
+
+var playlistsLoaded = false;
+var playlistsOffset = 0;
+document.getElementById('playlists-tab').addEventListener('click', function() {
+  if (playlistsLoaded)
+    return;
+
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', 'playlists');
+  xhr.addEventListener('load', function(loadEvent) {
+    if (xhr.status == 200) {
+      var res = JSON.parse(xhr.responseText);
+
+      var template = document.getElementById('playlist-template');
+      var tbody = document.getElementById('playlist-template').parentNode;
+      template = template.cloneNode(true);
+
+      while (tbody.firstChild)
+        tbody.removeChild(tbody.firstChild);
+
+      for (var i = 0; i < res.playlists.length; i++) {
+        var row = template.cloneNode(true);
+        row.removeAttribute('id');
+        row.classList.remove('hide');
+        row.querySelector('.playlist-id').innerText = res.playlists[i].id;
+      }
+
+      document.getElementById('playlists-preload').classList.add('hide');
+      document.getElementById('playlists-table').classList.remove('hide');
+    }
+  });
+
+  xhr.send(JSON.stringify({offset:playlistsOffset, limit:100}));
+});

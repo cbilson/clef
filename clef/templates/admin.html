@@ -18,7 +18,7 @@
   <div class="col s12">
     <ul class="tabs">
       <li class="tab col s3"><a class="active" href="#users">Users</a></li>
-      <li class="tab col s3"><a href="#playlists">Playlists</a></li>
+      <li class="tab col s3"><a id="playlists-tab" href="#playlists">Playlists</a></li>
     </ul>
   </div>
   <div id="users" class="col s12">
@@ -45,8 +45,8 @@
           <td>
             <span class="user-status">{{user.status}}</span>
             <span class="hide user-operation-progress">
-            <progress />
-            <a class="user-operation-log" href="#!">log</a>
+              <progress></progress>
+              <a class="user-operation-log" href="#!">log</a>
             </span>
           </td>
           <td>
@@ -71,7 +71,42 @@
     </table>
   </div>
   <div id="playlists" class="col s12">
-    <h3>TODO: Playlists</h3>
+    <div id="playlists-preload" class="preloader-wrapper big active">
+      <div class="spinner-layer spinner-blue-only">
+        <div class="circle-clipper left">
+          <div class="circle"></div>
+        </div><div class="gap-patch">
+          <div class="circle"></div>
+        </div><div class="circle-clipper right">
+          <div class="circle"></div>
+        </div>
+      </div>
+    </div>
+
+    <table class="striped highlight hide">
+      <thead>
+        <tr>
+          <th>Id</th>
+          <th>Owner</th>
+          <th>Name</th>
+          <th>Description</th>
+          <th>Tracks</th>
+          <th>Followers</th>
+          <th>Genres</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr id="playlist-template" class="hide">
+          <td class="playlist-id"></td>
+          <td class="playlist-owner"></td>
+          <td class="playlist-name"></td>
+          <td class="playlist-description"></td>
+          <td class="playlist-tracks"></td>
+          <td class="playlist-followers"></td>
+          <td class="playlist-genres"></td>
+        </tr>
+      </tbody>
+    </table>
   </div>
 </div>
 {% endblock %}
