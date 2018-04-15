@@ -297,6 +297,8 @@ def import_user_playlists(user_id):
 
 @app.cli.command('refresh-playlists')
 def refresh_playlists():
+    """Syncs set of playlists each user follows on spotify with what we have, adding new playlists
+       and flagging stale ones, but not downloading information about."""
     start = time.time()
     # Get all current user's playlists.
     cur = mysql.connection.cursor()
@@ -327,7 +329,10 @@ def refresh_playlists():
     checked_playlists = set()
     new_follows = 0
     unfollows = 0
+    stale_users = 0
+
     for uid, pids in user_playlists.items():
+        is_state = False
         users[uid] = User.load(uid)
         spotify_playlists = spotify.get_user_playlists(users[uid])
 
@@ -341,13 +346,20 @@ def refresh_playlists():
                 if pid not in playlist_snapshot_ids:   # must be new
                     playlist = Playlist.from_json(sp)
                     playlist.save()  # status='New', a separate job will come around and import it
+                    is_stale = True
                 elif sp['snapshot_id'] != playlist_snapshot_ids[pid]:  # our copy is stale
+                    is_stale = True
                     stale_playlists.add(pid)
 
                 checked_playlists.add(pid)
 
             if pid not in pids:  # must be a new playlist the user started following
                 users[uid].follow_playlist_id(pid)
+
+                # if the new playlist is stale, mark the user stale
+                if sp['snapshot_id'] != playlist_snapshot_ids.get(pid):
+                    is_stale = True
+
                 new_follows = new_follows + 1
 
         # remove any playlists the user is no longer following
@@ -355,6 +367,10 @@ def refresh_playlists():
         for p in no_longer_following:
             unfollows = unfollows + 1
             users[uid].unfollow_playlist_id(p)
+
+        users[uid].status = 'Stale' if is_stale else 'Ready'
+        stale_users = stale_users + (1 if is_stale else 0)
+        users[uid].save()
 
     # mark each stale playlist once (not once per user that follows the playlist)
     for pid in stale_playlists:
@@ -371,6 +387,7 @@ def refresh_playlists():
     click.echo('Playlists Checked:      %s' % len(checked_playlists))
     click.echo('Orphan Playlists:       %s' % (len(playlist_snapshot_ids) - len(checked_playlists)))
     click.echo('Stale Playlists:        %s' % len(stale_playlists))
+    click.echo('Stale Users:            %s' % stale_users)
     click.echo('New Playlist Follows:   %s' % new_follows)
     click.echo('Playlist Unfollows:     %s' % unfollows)
     click.echo('--------------------------------------------------------------------------------')
