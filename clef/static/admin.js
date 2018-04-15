@@ -10,9 +10,9 @@ function checkImportStatus(importButton, progress, userStatus, resultsButton) {
     if (xhr.status == 200) {
       job = JSON.parse(xhr.responseText);
       if (job.status == 'Success') {
+        userStatus.innerText = job.status + ' (duration: ' + job.duration.substring(0, 8) + ')';
         progress.classList.add('hide');
         importButton.classList.remove('disabled');
-        userStatus.innerText = 'Import complete!';
         importButton.classList.add('hide');
         resultsButton.href = 'import/job/' + jobId + '/results';
         resultsButton.classList.remove('hide');
@@ -22,7 +22,7 @@ function checkImportStatus(importButton, progress, userStatus, resultsButton) {
         importButton.classList.remove('disabled');
         userStatus.innerText = 'Failed';
       } else {
-        userStatus.innerText = job.status;
+        userStatus.innerText = job.status + ' (duration: ' + job.duration.substring(0, 8) + ')';
         setTimeout(function(){
           checkImportStatus(importButton, progress, userStatus, resultsButton);
         }, POLLING_FREQ);
