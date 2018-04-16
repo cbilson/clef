@@ -32,12 +32,10 @@ class Artist:
         artist.save()
 
         if 'genres' in js:
-            for genre in js['genres']:
-                artist.add_genre(genre)
+            artist.add_genres(js['genres'])
 
         if 'images' in js:
-            for image in js['images']:
-                artist.add_image(image['width'], image['height'], image['url'])
+            artist.add_images([(image['width'], image['height'], image['url']) for image in js['images']])
 
         return artist
 
@@ -57,8 +55,8 @@ class Artist:
         return Artist._from_row(cursor.fetchone())
 
     def load_many(ids):
+        if len(ids) < 1: return {}
         params = ','.join(['%s'] * len(ids))
-        app.logger.debug('Artist.load_many: %s artists, [%s]' % (len(ids), ids))
         cursor = mysql.connection.cursor()
         cursor.execute('select id, name, type, followers, popularity '
                        'from Artist '
@@ -76,20 +74,29 @@ class Artist:
                        (self.id, self.name, self.type, self.followers, self.popularity,
                         self.name, self.type, self.followers, self.popularity))
 
-    def add_genre(self, genre):
-        app.logger.debug('adding genre for artist %s (id:%s): %s' % (self.name, self.id, genre))
+    def save_many(artists):
         cursor = mysql.connection.cursor()
-        cursor.execute('insert into ArtistGenre(artist_id, genre) '
-                       'values(%s, %s) '
-                       'on duplicate key update '
-                       'genre=%s',
-                       (self.id, genre, genre))
+        cursor.executemany("""
+        insert into   Artist(id, name, type, followers, popularity)
+        values        (%s, %s, %s, %s, %s)
+        on duplicate key update
+                      name=values(name), type=values(type), followers=values(followers), popularity=values(popularity)
+        """, [(artist.id, artist.name, artist.type, artist.followers, artist.popularity) for artist in artists])
 
-    def add_image(self, width, height, url):
-        app.logger.debug('adding image for artist %s (id:%s): %s' % (self.name, self.id, url))
+    def add_genres(self, genres):
         cursor = mysql.connection.cursor()
-        cursor.execute('insert into ArtistImage(artist_id, width, height, url) '
-                       'values(%s, %s, %s, %s) '
-                       'on duplicate key update '
-                       'width=%s, height=%s, url=%s',
-                       (self.id, width, height, url, width, height, url))
+        cursor.executemany("""
+            insert into ArtistGenre(artist_id, genre)
+            values      (%s, %s)
+            on duplicate key
+            update genre=values(genre)""",
+                       [(self.id, genre) for genre in genres])
+
+    def add_images(self, images):
+        cursor = mysql.connection.cursor()
+        cursor.executemany("""
+            insert into ArtistImage(artist_id, width, height, url)
+            values(%s, %s, %s, %s)
+            on duplicate key update
+            width=values(width), height=values(height), url=values(url)""",
+                           [(self.id, w, h, u) for w, h, u in images])

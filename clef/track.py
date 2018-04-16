@@ -52,6 +52,7 @@ class Track:
         return Track._from_row(cursor.fetchone())
 
     def load_many(ids):
+        if len(ids) < 1: return {}
         params = ','.join(['%s'] * len(ids))
         cursor = mysql.connection.cursor()
         cursor.execute("""
@@ -97,6 +98,32 @@ class Track:
               self.energy, self.instrumentalness, self.key, self.liveness, self.loudness, self.mode,
               self.speechiness, self.tempo, self.time_signature, self.valence))
 
+    def save_many(tracks):
+        for track in tracks:
+            if not isinstance(track, Track):
+                raise Exception("save_many tracks must be Track: %s" % track)
+
+        cursor = mysql.connection.cursor()
+        cursor.executemany("""
+        insert into Track (
+               id, name, type, album_id, disc_number, duration_ms, explicit, popularity, preview_url,
+               acousticness, danceability, energy, instrumentalness, `key`, liveness, loudness,
+               mode, speechiness, tempo, time_signature, valence)
+        values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+        on duplicate key
+        update name=values(name), type=values(type), album_id=values(album_id),
+               disc_number=values(disc_number), duration_ms=values(duration_ms),
+               explicit=values(explicit), popularity=values(popularity),
+               preview_url=values(preview_url), acousticness=values(acousticness),
+               danceability=values(danceability), energy=values(energy),
+               instrumentalness=values(instrumentalness), `key`=values(`key`),
+               liveness=values(liveness), loudness=values(loudness),
+               mode=values(mode), speechiness=values(speechiness), tempo=values(tempo),
+               time_signature=values(time_signature), valence=values(valence)
+        """, [(track.id, track.name, track.type, track.album_id, track.disc_number, track.duration_ms,
+              track.explicit, track.popularity, track.preview_url, track.acousticness, track.danceability,
+              track.energy, track.instrumentalness, track.key, track.liveness, track.loudness, track.mode,
+              track.speechiness, track.tempo, track.time_signature, track.valence) for track in tracks])
 
     def add_artist(self, artist):
         cursor = mysql.connection.cursor()
@@ -104,8 +131,17 @@ class Track:
         insert into TrackArtist(track_id, artist_id)
         values      (%s, %s)
         on duplicate key
-        update track_id = %s
-        """, (self.id, artist.id, self.id))
+        update track_id=values(track_id)
+        """, (self.id, artist.id))
+
+    def link_many_to_many_artists(track_id_artist_ids):
+        cursor = mysql.connection.cursor()
+        cursor.executemany("""
+        insert into TrackArtist(track_id, artist_id)
+        values      (%s, %s)
+        on duplicate key
+        update track_id=values(track_id)
+        """, [(track_id, artist_id) for track_id, artist_id in track_id_artist_ids])
 
     def from_json(json):
         if json['id'] is None: raise ValueError('Track has no id: %s' % json)

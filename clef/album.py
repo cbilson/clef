@@ -1,9 +1,22 @@
 import json
+import re
 from datetime import datetime, timedelta
 from clef import app, mysql
 
 class Album:
     def __init__(self, id, name, label, album_type, popularity, release_date):
+        if (len(id) > 32): raise Exception("album_id too long: %s" % id)
+
+        if isinstance(release_date, str):
+            if (re.match(r'^\d{4}$', release_date)): release_date = release_date + '-01-01'
+            elif (re.match(r'^\d{4}-\d{1,2}$', release_date)): release_date = release_date + '-01'
+            elif (re.match(r'^\d{4}\d{1,2}$', release_date)): release_date = release_date + '01'
+            elif (re.match(r'^\d{4}\d{2}-\d{2}$', release_date)):
+                release_date = release_date[:6] + release_date[7:9]
+            elif (re.match(r'^\d{4}-\d{1,2}-\d{1,2}$', release_date)): pass
+            else:
+                raise Exception("Bad release date: %s" % release_date)
+
         self.id = id
         self.name = name
         self.label = label
@@ -62,23 +75,56 @@ class Album:
         return Album._from_row(cursor.fetchone())
 
     def load_many(ids):
+        if len(ids) < 1: return {}
         params = ','.join(['%s'] * len(ids))
         cursor = mysql.connection.cursor()
-        cursor.execute('select id, name, label, album_type, popularity, release_date '
-                       'from Album '
-                       'where id in (%s)' % params,
-                       tuple(ids))
+        cursor.execute("""
+            select    id, name, label, album_type, popularity, release_date
+            from      Album
+            where id in (%s)
+        """ % params, tuple(ids))
         albums = [Album._from_row(row) for row in cursor]
         return {album.id:album for album in albums}
 
     def save(self):
         cursor = mysql.connection.cursor()
-        cursor.execute('insert into Album(id, name, label, album_type, popularity, release_date) '
-                       'values(%s, %s, %s, %s, %s, %s) '
-                       'on duplicate key update '
-                       'name=%s, label=%s, album_type=%s, popularity=%s, release_date=%s',
-                       (self.id, self.name, self.label, self.album_type, self.popularity, self.release_date,
-                        self.name, self.label, self.album_type, self.popularity, self.release_date))
+        try:
+            cursor.execute('insert into Album(id, name, label, album_type, popularity, release_date) '
+                           'values(%s, %s, %s, %s, %s, %s) '
+                           'on duplicate key update '
+                           'name=%s, label=%s, album_type=%s, popularity=%s, release_date=%s',
+                           (self.id, self.name, self.label, self.album_type, self.popularity, self.release_date,
+                            self.name, self.label, self.album_type, self.popularity, self.release_date))
+        except:
+            app.logger.error("Failed to save Album: %s" % self)
+            raise
+
+    def save_many(albums):
+        cursor = mysql.connection.cursor()
+        cursor.executemany("""
+        insert into   Album(id, name, label, album_type, popularity, release_date)
+        values        (%s, %s, %s, %s, %s, %s)
+        on duplicate key
+        update        name=values(name), label=values(label), album_type=values(album_type),
+                      popularity=values(popularity), release_date=values(release_date)
+        """, [(album.id, album.name, album.label, album.album_type, album.popularity, album.release_date)
+              for album in albums])
+
+    def link_many_to_many_artists(album_artist_id_tuples):
+        for album_id, artist_id in album_artist_id_tuples:
+            if not isinstance(album_id, str): raise Exception("album_id must be a string: %s" % album_id)
+            if len(album_id) > 32:
+                raise Exception("album_id too long: %s" % album_id)
+            if not isinstance(artist_id, str): raise Exception("artist_id must be a string: %s" % artist_id)
+            if len(artist_id) > 32:
+                raise Exception("artist_id too long: %s" % artist_id)
+
+        cursor = mysql.connection.cursor()
+        cursor.executemany("""
+        insert into   AlbumArtist(album_id, artist_id)
+        values        (%s, %s)
+        on duplicate key update album_id=values(album_id)
+        """, album_artist_id_tuples)
 
     def add_artist(self, artist):
         cursor = mysql.connection.cursor()

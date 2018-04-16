@@ -1,5 +1,7 @@
 import sys
 import json
+import warnings
+import MySQLdb
 import clef.spotify as spotify
 
 from datetime import datetime, timedelta
@@ -9,11 +11,16 @@ from clef.artist import Artist
 from clef.track import Track
 from clef.album import Album
 
+# uncomment when testing to stop and catch truncation and other MySQL warnings
+#warnings.filterwarnings('error', category=MySQLdb.Warning)
+
 class Playlist:
     def __init__(self, id, owner=None, name=None, description=None, public=False, snapshot_id=None, status='New'):
         self.id = id
         self.owner = owner
         self.name = name
+
+        if description is not None and len(description) > 255: description = description[:255]
         self.description = description
         self.public = False
         self.snapshot_id = snapshot_id
@@ -73,8 +80,17 @@ class Playlist:
                        'added_at=%s, added_by=%s',
                        (self.id, track.id, added_at, added_by, added_at, added_by))
 
+    def add_many_tracks(playlist_id, track_playlist):
+        cursor = mysql.connection.cursor()
+        cursor.executemany("""
+        insert into   PlaylistTrack(playlist_id, track_id, added_at, added_by)
+        values        (%s,%s,%s,%s)
+        on duplicate key
+        update        added_at=values(added_at), added_by=values(added_by)
+        """, [(playlist_id, tid, aa, ab) for tid, aa, ab in track_playlist])
+
     def remove_track(self, track):
-        app.logger.debug('Removing track %s to playlist %s' % (track.id, self.id))
+        app.logger.debug('Removing track %s from playlist %s' % (track.id, self.id))
         cursor = mysql.connection.cursor()
         cursor.execute('delete from PlaylistTrack '
                        'where playlist_id = %s and track_id = %s ',
@@ -104,155 +120,164 @@ class Playlist:
         new_album_count = 0
         new_artist_count = 0
         playlist_js = spotify.get_playlist(user, pl_id, owner_id)
+        if playlist_js is None: return None, 0, 0, 0
 
         pl = Playlist.from_json(playlist_js)
         pl.save()
 
-        new_track_ids = set()
-        new_artist_ids = set()
-        track_albums = []
-        track_artists = []
-        items_js = [item for item in spotify.get_playlist_tracks(user, pl)]
-
-        tracks_js = [item['track'] for item in items_js]
-        track_ids = {track['id'] for track in tracks_js if track['id'] not in tracks}
+        playlist_tracks = list()
+        playlist_track_ids = set()
+        new_tracks = dict()
+        for item in spotify.get_playlist_tracks(user, pl.id, pl.owner):
+            pt = item['track']
+            if pt['id'] is None:
+                # skip empty garbage tracks
+                continue
+            playlist_track_ids.add(pt['id'])
+            playlist_tracks.append((pt['id'], pt.get('added_at'), pt.get('added_by', {}).get('id')))
+            if pt['id'] not in tracks: new_tracks[pt['id']] = pt
 
         # remove any tracks no longer in the playlist
         existing_tracks = list(Track.for_playlist(pl))
         app.logger.debug("existing tracks in %s: %s" % (pl.id, len(existing_tracks)))
         for existing_track in Track.for_playlist(pl):
-            if existing_track.id not in track_ids:
-                app.logger.debug('removing %s from %s' % (existing_track.id, pl.id))
+            if existing_track.id not in playlist_track_ids:
                 pl.remove_track(existing_track)
+            elif existing_track.id in new_tracks:
+                # else we already had this track, so can remove it from new tracks
+                del new_tracks[existing_track.id]
 
-        tracks.update(Track.load_many(track_ids))
-        for track_js in tracks_js:
-            if track_js['id'] in tracks: continue
-            new_track_ids.add(track_js['id'])
-            track_albums.append((track_js['id'], track_js['album']['id']))
-            for artist_js in track_js['artists']:
-                if artist_js['id'] not in artists: new_artist_ids.add(artist_js['id'])
-                track_artists.append((track_js['id'], artist_js['id']))
+        # try to fetch any new tracks from the database
+        have_tracks = Track.load_many(new_tracks.keys())
+        tracks.update(have_tracks)
+        for id in have_tracks.keys():
+            del new_tracks[id]
 
-        app.logger.debug('%s new tracks' % len(new_track_ids))
-        new_track_count += len(new_track_ids)
+        # any tracks that still aren't found are actually new
+        new_albums = dict()
+        new_artists = dict()
+        track_albums = list()
+        track_artists = list()
+        app.logger.debug('%s new tracks' % len(new_tracks))
+        new_track_count += len(new_tracks)
+        for tr in new_tracks.values():
+            alid = tr['album']['id']
+            # skip null albums - this is normal
+            if alid is None: continue
+            track_albums.append((tr['id'], alid))
+            if alid not in albums: new_albums[alid] = tr['album']
 
-        new_album_ids = set()
-        album_artists = []
-        albums_js = [track['album'] for track in tracks_js]
-        album_ids = [album['id'] for album in albums_js if album['id'] not in albums]
-        albums.update(Album.load_many(album_ids))
-        for album_js in albums_js:
-            for artist_js in album_js['artists']:
-                album_artists.append((album_js['id'], artist_js['id']))
+            for ar in tr['artists']:
+                arid = ar['id']
+                track_artists.append((tr['id'], arid))
+                if arid not in artists: new_artists[arid] = ar
 
-            if album_js['id'] in albums: continue
-            new_album_ids.add(album_js['id'])
+        # try to fetch albums from the database and ignore albums we already have
+        have_albums = Album.load_many(new_albums.keys())
+        albums.update(have_albums)
+        for id in have_albums.keys():
+            del new_albums[id]
 
-        app.logger.debug('%s new albums' % len(new_album_ids))
-        new_album_count += len(new_album_ids)
+        app.logger.debug('%s new albums' % len(new_albums))
 
-        artists_js = [artist for album in albums_js for artist in album['artists']]
-        artist_ids = [artist['id'] for artist in artists_js if artist['id'] not in artists]
-        artists.update(Artist.load_many(artist_ids))
-        for artist_id in artist_ids:
-            if artist_id in artists: continue
-            new_artist_ids.add(artist_id)
-
-        app.logger.debug('%s new artists' % len(new_artist_ids))
-        new_artist_count += len(new_artist_ids)
-
-        # import new artists
-        for artist_js in spotify.get_artists(user, new_artist_ids):
-            artist = Artist.import_json(artist_js)
-            artists[artist.id] = artist
-
-        for album_js in spotify.get_albums(user, new_album_ids):
-            album = Album.import_json(album_js)
+        # create the albums
+        albums_to_save = list()
+        album_artists = list()
+        for al in spotify.get_albums(user, new_albums.keys()):
+            album = Album.import_json(al)
             albums[album.id] = album
+            albums_to_save.append(album)
+            for ar in al['artists']:
+                album_artists.append((album.id, arid))
+                if ar['id'] in artists: continue
+                if ar['id'] in new_artists: continue
+                new_artists[arid] = ar
 
-        for track_js in spotify.get_tracks(user, new_track_ids):
-            track = Track.import_json(track_js)
-            tracks[track.id] = track
+        Album.save_many(albums_to_save)
 
-        app.logger.debug("linking artists and tracks")
-        for track_id, artist_id in track_artists:
-            tracks[track_id].add_artist(artists[artist_id])
+        # try to fetch artists from the database and ignore artists we already have
+        have_artists = Artist.load_many(new_artists.keys())
+        artists.update(have_artists)
+        for id in have_artists.keys():
+            del new_artists[id]
 
-        app.logger.debug("linking artists and albums")
-        for album_id, artist_id in album_artists:
-            albums[album_id].add_artist(artists[artist_id])
+        app.logger.debug('%s new artists' % len(new_artists))
 
-        app.logger.debug("linking tracks and playlists")
-        for item_js in items_js:
-            added_by = None if 'added_by' not in items_js or item_js['added_by'] is None else item_js['added_by']['id']
-            pl.add_track(tracks[item_js['track']['id']], item_js['added_at'], added_by)
+        # remaining new_artists are truly new artists and need to be imported from spotify
+        artists_to_save = list()
+        for ar in spotify.get_artists(user, new_artists.keys()):
+            artist = Artist.import_json(ar)
+            artists[artist.id] = artist
+            artists_to_save.append(artist)
+
+        Artist.save_many(artists_to_save)
+        Album.link_many_to_many_artists(album_artists)
+
+        tracks_to_save = dict()
+        for tr in spotify.get_tracks(user, new_tracks.keys()):
+            track = Track.from_json(tr)
+            tracks_to_save[track.id] = track
+
+        features = spotify.get_audio_features(user, tracks_to_save.keys())
+        for track_features in features:
+            tracks_to_save[track_features['id']].update_features(track_features)
+
+        Track.save_many(tracks_to_save.values())
+        Track.link_many_to_many_artists(track_artists)
+        Playlist.add_many_tracks(pl.id, playlist_tracks)
 
         pl.status = 'Ready'
         pl.save()
 
         return pl, new_track_count, new_album_count, new_artist_count
 
-    def _import_user_playlists(user, playlist_id=None, force_reimport=False, continue_on_error=True):
+    def _import_user_playlists(user, playlist_id=None, force_reimport=False, continue_on_error=True,
+                               album_cache={}, track_cache={}, artist_cache={}):
         """
-        Imports a set of playlists for a user.
+        Imports one or a set of playlists for a user.
         Returns the number of tracks, albums, and artists added.
         """
         new_track_count = 0
         new_album_count = 0
         new_artist_count = 0
 
-        # cache albums, artists, and tracks by id
-        albums = {}
-        artists = {}
-        tracks = {}
-
         for playlist_item_js in spotify.get_user_playlists(user):
-            app.logger.debug('playlist item: %s' % json.dumps(playlist_item_js))
             pl_id = playlist_item_js['id']
             if playlist_id != None and pl_id != playlist_id:
-                app.logger.debug('skipping playlist %s because it was not requested.' % pl_id)
+                continue
+
+            owner_id = playlist_item_js['owner']['id']
+            snapshot_id = playlist_item_js['snapshot_id']
+            pl = Playlist.load(pl_id)
+            if pl is not None and pl.snapshot_id == snapshot_id and not force_reimport:
+                app.logger.debug('playlist unchanged (snapshot_id: %s).' % pl.snapshot_id)
             else:
-                owner_id = playlist_item_js['owner']['id']
-                snapshot_id = playlist_item_js['snapshot_id']
-                pl = Playlist.load(pl_id)
-                if pl is not None and pl.snapshot_id == snapshot_id and not force_reimport:
-                    app.logger.debug('playlist unchanged (snapshot_id: %s).' % pl.snapshot_id)
-                else:
-                    if pl is None:
-                        app.logger.debug('new playlist %s' % pl_id)
-                    elif pl.snapshot_id != snapshot_id:
-                        app.logger.debug('stale: old snapshot_id %s, new snapshot_id %s' % (pl.snapshot_id, snapshot_id))
-                    else:
-                        app.logger.debug('force_reimport')
-                    try:
-                        pl, tc, alc, arc = Playlist.import_playlist(user, pl_id, owner_id, albums,  artists, tracks)
-                        new_track_count += tc
-                        new_album_count += alc
-                        new_artist_count += arc
-                    except:
-                        e = sys.exc_info()[0]
-                        app.logger.error('Failed to import playlist %s: %s' % (pl_id, e))
-                        if not continue_on_error: raise
-
                 if pl is None:
-                    app.logger.warn('no playlist %s loaded, so not adding follow for user %s' % (pl_id, user.id))
-                elif user is None:
-                    app.logger.warn('no user loaded, so not adding follow of playlist %s' % (pl.id))
+                    app.logger.debug('new playlist %s' % pl_id)
+                elif pl.snapshot_id != snapshot_id:
+                    app.logger.debug('stale: old snapshot_id %s, new snapshot_id %s' % (pl.snapshot_id, snapshot_id))
                 else:
-                    app.logger.debug('adding follow of %s to user %s' % (pl.id, user.id))
-                    user.add_playlist(pl)
+                    app.logger.debug('force_reimport')
+                pl, tc, alc, arc = Playlist.import_playlist(user, pl_id, owner_id, album_cache,  artist_cache, track_cache)
+                new_track_count += tc
+                new_album_count += alc
+                new_artist_count += arc
 
-        app.logger.debug('total tracks: %s, albums: %s, artists: %s' % (len(tracks), len(albums), len(artists)))
+            if pl is None:
+                app.logger.warn('no playlist %s loaded, so not adding follow for user %s' % (pl_id, user.id))
+            elif user is None:
+                app.logger.warn('no user loaded, so not adding follow of playlist %s' % (pl.id))
+            else:
+                app.logger.debug('adding follow of %s to user %s' % (pl.id, user.id))
+                user.add_playlist(pl)
+
+        app.logger.debug('total tracks: %s, albums: %s, artists: %s' % (len(track_cache), len(album_cache), len(artist_cache)))
         return new_track_count, new_album_count, new_artist_count
 
-    def import_user_playlist(user, playlist_id, force_reimport=False):
-        """
-        Import a single user playlist from spotify.
-        This is mostly for testing, so I don't go over the spotify
-        limits.
-        """
-        return Playlist._import_user_playlists(user, playlist_id=playlist_id, force_reimport=force_reimport)
+    def import_user_playlist(user, playlist_id, force_reimport=False,
+                             album_cache={}, track_cache={}, artist_cache={}):
+        return Playlist._import_user_playlists(user, playlist_id=playlist_id, force_reimport=force_reimport,
+                                               album_cache=album_cache, track_cache=track_cache, artist_cache=artist_cache)
 
     def import_user_playlists(user, force_reimport=False):
         """

@@ -158,36 +158,36 @@ def get_playlist(user, id, owner=None, fields=DEFAULT_PLAYLIST_FIELDS):
     """Gets a specific playlist."""
     if owner is None: owner = user.id
     playlist_url = 'https://api.spotify.com/v1/users/%s/playlists/%s' % (owner, id)
-    status, playlist = _get_json(user, playlist_url, params={'fields':fields})
+    status, playlist = _get_json(user, playlist_url, params=dict(fields=fields))
     if status != 200:
         app.logger.error('Error fetching playlist %s/%s: %s, %s' % (owner, id, status, playlist))
         return None
 
     return playlist
 
-DEFAULT_PLAYLIST_TRACK_FIELDS = ('items(added_at,added_by.id,total,'
-                                 'track(id,name,type,disc_number,duration_ms,explicit,href,popularity,'
-                                 'artists(id),'
-                                 'album(id,artists(id))))')
-def get_playlist_tracks(user, playlist, total=None, fields=DEFAULT_PLAYLIST_TRACK_FIELDS):
-    """Gets the tracks associated with a playlist. NOTE: this only ever gives 100 tracks and doesn't page.
-       We should probably just not use this method."""
-    if total is None:
-        pl = get_playlist(user, playlist.id, playlist.owner, fields='tracks.total')
-        if 'tracks' in pl and 'total' in pl['tracks']:
-            total = int(pl['tracks']['total'])
-        else:
-            app.logger.error('Failed to determine total tracks for %s.' % playlist)
+DEFAULT_PLAYLIST_TRACKS_FIELDS= 'items(added_at,added_by.id,track(id,album.id,artists.id)),total'
+def get_playlist_tracks(user, id, owner=None, fields=DEFAULT_PLAYLIST_TRACKS_FIELDS):
+    params = dict(limit=100, offset=0, fields=fields)
+    owner = user.id if owner is None else owner
+    url = 'https://api.spotify.com/v1/users/%s/playlists/%s/tracks' % (owner, id)
+    status, result = _get_json(user, url, params=params)
+    if status != 200:
+        app.logger.error('failed to retrieve playlist tracks for user %s, playlist %s' % (user.id, id))
+        return
 
-    url = 'https://api.spotify.com/v1/users/%s/playlists/%s/tracks' % (playlist.owner, playlist.id)
-    params = {'fields':fields, 'offset': 0, 'limit': 100}
+    total = int(result['total'])
+    for playlist_track in result['items']:
+        yield playlist_track
+
+    params['offset'] += params['limit']
+
     while params['offset'] < total:
         status, result = _get_json(user, url, params=params)
         if status != 200:
-            app.logger.error('Failed to get tracks for playlist %s: %s' % (playlist.id, result))
+            app.logger.error('failed to retrieve playlist tracks for user %s, playlist %s' % (user.id, id))
             return
 
-        for item in result['items']: yield item
+        for playlist_track in result['items']: yield playlist_track
         params['offset'] += params['limit']
 
 DEFAULT_ALBUM_FIELDS = 'artists.id,genres,id,images(width,height,url),label,name,popularity,release_date,tracks.href'
@@ -215,7 +215,12 @@ def get_artists(user, artist_ids):
     limit = 20
     queue = list(artist_ids)
     url = 'https://api.spotify.com/v1/artists'
-    params = {'ids':','.join(queue[0:limit])}
+    params = {}
+    try:
+        params = {'ids':','.join(queue[0:limit])}
+    except TypeError:
+        print("!!! Broken artist id list: %s" % queue)
+        raise
 
     while len(queue) > 0:
         status, result = _get_json(user, url, params=params)
@@ -225,7 +230,11 @@ def get_artists(user, artist_ids):
 
         for item in result['artists']: yield item
         del queue[0:limit]
-        params['ids'] = ','.join(queue[0:limit])
+        try:
+            params = {'ids':','.join(queue[0:limit])}
+        except TypeError:
+            print("!!! Broken artist id list: %s" % queue)
+            raise
 
 def get_tracks(user, track_ids):
     limit = 50
