@@ -392,6 +392,54 @@ def refresh_playlists():
     click.echo('Playlist Unfollows:     %s' % unfollows)
     click.echo('--------------------------------------------------------------------------------')
 
+@app.cli.command('update-stale-playlists')
+@click.option('--limit', default=1)
+def update_stale_playlists(limit):
+    start = time.time()
+    cur = mysql.connection.cursor()
+
+    # For each stale or new playlist, get it's id and one user id we can use to retrieve it
+    cur.execute("""
+select   p.id, min(pf.user_id)
+from     Playlist p
+         inner join PlaylistFollow pf on p.id = pf.playlist_id
+where    p.status in ('New', 'Stale')
+group by p.id
+limit    %s;
+    """, (limit,))
+
+    updated = set()
+    users = dict()
+    artist_cache, track_cache, album_cache = dict(), dict(), dict()
+    new_tracks = 0
+    new_albums = 0
+    new_artists = 0
+    for pid, uid in cur:
+        if uid not in users: users[uid] = User.load(uid)
+        nt, nal, nar = Playlist.import_user_playlist(users[uid], pid, force_reimport=True,
+                                      album_cache=album_cache, track_cache=track_cache,
+                                      artist_cache=artist_cache)
+        mysql.connection.commit()
+        updated.add(pid)
+        new_tracks = new_tracks + nt
+        new_albums = new_albums + nal
+        new_artists = new_artists + nar
+
+    elapsed = time.time() - start
+    click.echo('--------------------------------------------------------------------------------')
+    click.echo('done. Elapsed time: %s' % elapsed)
+    click.echo()
+    click.echo('%s' % updated)
+    click.echo()
+    click.echo('Playlists Updated:     %s' % len(updated))
+    click.echo('New Tracks Added:      %s' % new_tracks)
+    click.echo('New Albums Added:      %s' % new_albums)
+    click.echo('New Artists Added:     %s' % new_artists)
+    click.echo('Total Tracks Loaded:   %s' % len(track_cache))
+    click.echo('Total Albums Loaded:   %s' % len(album_cache))
+    click.echo('Total Artists Loaded:  %s' % len(artist_cache))
+    click.echo('--------------------------------------------------------------------------------')
+
 #-------------------------------------------------------------------------------
 #  Web Jobs
 #  see: https://github.com/projectkudu/kudu/wiki/WebJobs-API
