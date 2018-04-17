@@ -548,16 +548,33 @@ def import_playlist_images(user_id):
     mysql.connection.commit()
     click.echo('done. %s playlists, %s images.' % (playlist_count, image_count))
 
-@app.cli.command('import-user-playlist')
+@app.cli.command('import-playlist')
 @click.option('--user-id')
 @click.option('--playlist-id')
 @click.option('--force')
-def import_user_playlist(user_id, playlist_id, force=False):
-    """Imports a single user playlist from spotify, regardless if it has been changed or not."""
+def import_playlist(user_id, playlist_id, force=False):
+    """Imports a single playlist from spotify, optionally regardless if it has been changed or not."""
+    if playlist_id is None and user_id is None:
+        click.echo("Please specify either a user-id, a playlist-id, or both.")
+        return -1
+
+    start = time.time()
+
+    # if no user specified, find one that follows this playlist
+    if user_id is None:
+        user_id = Playlist.get_followers(playlist_id)[0]
+
     user = User.load(user_id)
     t, al, ar = Playlist.import_user_playlist(user, playlist_id, force)
     mysql.connection.commit()
-    click.echo('done. %s tracks, %s albums, %s artists.' % (t, al, ar))
+    elapsed = time.time() - start
+    click.echo('--------------------------------------------------------------------------------')
+    click.echo('done. Elapsed time: %s' % elapsed)
+    click.echo()
+    click.echo('New Tracks:     %s' % t)
+    click.echo('New Albums:     %s' % al)
+    click.echo('New Artists:    %s' % ar)
+    click.echo('--------------------------------------------------------------------------------')
 
 @app.cli.command('remove-playlist')
 @click.option('--user-id')

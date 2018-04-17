@@ -302,6 +302,13 @@ class Playlist:
             'delete from Playlist where id = %s',
             (playlist_id,))
 
+    def get_followers(playlist_id):
+        cur = mysql.connection.cursor()
+        cur.execute("""
+        select user_id from PlaylistFollow where playlist_id = %s
+        """, (playlist_id,))
+        return [user_id for user_id, in cur]
+
 class PlaylistRefreshResults:
     def __init__(self, new=[], updated=[], deleted=[], track_count=0, artist_count=0, album_count=0):
         self.new = new
