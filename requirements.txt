@@ -26,9 +26,11 @@ Pygments==2.2.0
 PyMySQL==0.8.0
 pytest==3.5.0
 requests==2.3.0
+scikit-learn==0.19.1
 scipy==1.0.1
 simplegeneric==0.8.1
 six==1.11.0
+sklearn==0.0
 traitlets==4.3.2
 uritools==2.1.0
 virtualenv==15.1.0
