@@ -1,6 +1,5 @@
 import numpy as np
 import scipy
-import heapq
 import random
 from sklearn import datasets #for testing only
 
