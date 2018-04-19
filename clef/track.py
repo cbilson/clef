@@ -66,6 +66,9 @@ class Track:
         return {track.id:track for track in tracks}
 
     def for_playlist(playlist):
+        return Track.for_playlist_id(playlist.id)
+
+    def for_playlist_id(id):
         cursor = mysql.connection.cursor()
         cursor.execute("""
         select t.id, t.name, t.type, t.album_id, t.disc_number, t.duration_ms, t.explicit, t.popularity, t.preview_url,
@@ -74,7 +77,7 @@ class Track:
         from   Track t
                inner join PlaylistTrack pt on t.id = pt.track_id
         where  pt.playlist_id = %s
-        """, (playlist.id,))
+        """, (id,))
         return [Track._from_row(row) for row in cursor]
 
     def save(self):

@@ -1,6 +1,6 @@
 {% extends "user_layout.html" %}
 {% block user_content %}
-<div class="col s8">
+<div class="col s5">
   <h5>Playlists</h5>
   <div class="scroll-list">
     <ul id="playlists">
@@ -74,5 +74,10 @@
       </tbody>
     </table>
   </div>
+</div>
+<div class="col s2">
+  Recommend other songs like those in this playlist?
+  <a id="recommendButton" href="#!" class="waves-effect waves-light btn-small">Yes, please!</a>
+  <div id="recommends"></div>
 </div>
 {% endblock %}

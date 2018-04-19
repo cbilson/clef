@@ -1,14 +1,20 @@
-import base64, json, os, requests
+import base64, json, os, random
 import jsonpickle
+import requests
+
+import clef.clustering
+
 from datetime import datetime, timedelta
 from requests.auth import HTTPBasicAuth
 from urllib.parse import unquote, urlparse
 from flask import render_template, get_template_attribute, request, session, redirect, url_for, jsonify
+
+from clef import app, mysql
+from clef.helpers import dump_session
+from clef.playlist import Playlist, PlaylistSummaryView, PlaylistDetailsView, AdminPlaylistSummaryView
+from clef.track import Track
 from clef.spotify import get_auth_url, get_auth_token, get_user, get_user_playlists
 from clef.user import User, UserArtistOverview, UserList, UserListEntry
-from clef.playlist import Playlist, PlaylistSummaryView, PlaylistDetailsView, AdminPlaylistSummaryView
-from clef.helpers import dump_session
-from clef import app, mysql
 
 @app.errorhandler(401)
 def custom_401(error):
@@ -98,6 +104,18 @@ def user_playlist_details(user_id, playlist_id):
     if 'user_id' not in session: abort(401)
     if session['user_id'] != user_id: abort(403)
     return jsonpickle.encode(PlaylistDetailsView.get(user_id, playlist_id), unpicklable=False)
+
+@app.route('/user/<user_id>/playlist/<playlist_id>/recommend')
+def user_playlist_recommend(user_id, playlist_id):
+    if 'user_id' not in session: abort(401)
+    if session['user_id'] != user_id: abort(403)
+    PlaylistDetailsView.get(user_id, playlist_id)
+
+    # first cut, just pick a random song from the playlist and see where it takes us
+    tracks = Track.for_playlist_id(playlist_id)
+    track = random.choice(tracks)
+    recs = clef.clustering.recommend(user, track.id)
+    return jsonpickle.encode(recs, unpicklable=False)
 
 @app.route('/admin/users')
 def admin():

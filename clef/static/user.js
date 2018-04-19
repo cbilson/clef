@@ -55,7 +55,7 @@ refreshData.addEventListener('click', function(e) {
   startBackgroundOperation(refreshData, icon, 'refresh', null, updatePlaylists, logFailed);
 });
 
-var currentPlaylist = null;
+var currentSongs = null;
 var player = document.getElementById('audio-preview-controls');
 var autoPlaySwitch = document.getElementById('auto-play');
 var nowPlaying = document.getElementById('now-playing');
@@ -92,16 +92,23 @@ function showGenres(playlistDetails) {
   }
 }
 
+function setNumericText(id, precision, val) {
+  if (val == null)
+    document.getElementById(id).innerText = '';
+  else
+    document.getElementById(id).innerText = val.toFixed(precision);
+}
+
 function showPlaylistAttributes(playlistDetails) {
-  document.getElementById('danceability-value').innerText = playlistDetails.danceability.toFixed(2);
-  document.getElementById('energy-value').innerText = playlistDetails.energy.toFixed(2);
-  document.getElementById('loudness-value').innerText = playlistDetails.loudness.toFixed(2);
-  document.getElementById('tempo-value').innerText = playlistDetails.tempo.toFixed(0);
-  document.getElementById('acousticness-value').innerText = playlistDetails.acousticness.toFixed(2);
-  document.getElementById('instrumentalness-value').innerText = playlistDetails.instrumentalness.toFixed(2);
-  document.getElementById('liveness-value').innerText = playlistDetails.liveness.toFixed(2);
-  document.getElementById('speechiness-value').innerText = playlistDetails.speechiness.toFixed(2);
-  document.getElementById('valence-value').innerText = playlistDetails.valence.toFixed(2);
+  setNumericText('danceability-value', 2, playlistDetails.danceability);
+  setNumericText('energy-value', 2, playlistDetails.energy);
+  setNumericText('loudness-value', 2, playlistDetails.loudness);
+  setNumericText('tempo-value', 0, playlistDetails.tempo);
+  setNumericText('acousticness-value', 2, playlistDetails.acousticness);
+  setNumericText('instrumentalness-value', 2, playlistDetails.instrumentalness);
+  setNumericText('liveness-value', 2, playlistDetails.liveness);
+  setNumericText('speechiness-value', 2, playlistDetails.speechiness);
+  setNumericText('valence-value', 2, playlistDetails.valence);
 }
 
 var switchSampleTimeout = null;
@@ -118,15 +125,15 @@ autoPlaySwitch.addEventListener('click', function() {
 });
 
 function playNextSample() {
-  if (currentPlaylist == null)
+  if (currentSongs == null)
     return;
 
   if (!autoPlaySwitch.checked)
     return;
 
   var source = document.getElementById('audio-preview-source');
-  source.src = currentPlaylist.shift();
-  currentPlaylist.push(source.src);
+  source.src = currentSongs.shift();
+  currentSongs.push(source.src);
 
   player.load();
   player.play();
@@ -135,12 +142,13 @@ function playNextSample() {
 
 function playSampleTracks(playlistDetails) {
   stopSamplePlayback();
-  currentPlaylist = playlistDetails.previews;
+  currentSongs = playlistDetails.previews;
   playNextSample();
 }
 
 function clickPlaylist(item) {
   nowPlaying.dataset.coverUrl = item.target.dataset.coverUrl;
+  nowPlaying.dataset.playlistId = item.target.dataset.id;
   var url = 'playlist/' + item.target.dataset.id + '/details';
   var icon = document.getElementById('playlist-loading');
   icon.classList.remove('hide');
@@ -203,4 +211,23 @@ userSaveButton.addEventListener('click', function(e) {
     function(xhr) {
       showPageWarning("Failed to save your changes: " + xhr.responseText);
     });
+});
+
+recommendButton = document.getElementById('recommendButton');
+recommendButton.addEventListener('click', function() {
+  if (nowPlaying.dataset.playlistId == null)
+    return;
+
+  recommendButton.classList.add('disabled');
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', 'playlist/' + nowPlaying.dataset.playlistId + '/recommend');
+  xhr.onload = function() {
+    recommendButton.classList.add('remove');
+    if (xhr.status == 200) {
+      recs = JSON.parse(xhr.responseText);
+      document.getElementById('recommends').innerText = recs;
+    }
+  };
+
+  xhr.send();
 });

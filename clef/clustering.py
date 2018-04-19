@@ -60,8 +60,8 @@ centroids, clusters = kmeans(d, 3)
 print(centroids)
 print(clusters)'''
 
-def recommend(track_id, average_vector):
-    spotify_recs = get_data(song)
+def recommend(user, track_id, average_vector):
+    spotify_recs = spotify.get_recommendations(user, [track_id])
     centroids, clusters = kmeans(spotify_recs, 3)
     min_dist = FLOAT.MAXIMUM
     minn = 3
