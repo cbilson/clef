@@ -4,8 +4,7 @@ import heapq
 import random
 from sklearn import datasets #for testing only
 
-import requests
-import spotify
+import clef.spotify
 
 def kmeans(data, n_clusters):
     #find minimum and maximum dimensions
@@ -61,16 +60,7 @@ centroids, clusters = kmeans(d, 3)
 print(centroids)
 print(clusters)'''
 
-def get_data(track_id, token):
-    spotify.authorize_me()
-    headers = {'Authorization': 'Bearer ' + token}
-    resp = requests.get('https://api.spotify.com/v1/recommendations?seed_tracks=' + track_id, headers=headers)
-    print resp['tracks']
-
-# TEST OF GET_DATA()
-get_data("2TpxZ7JUBn3uw46aR7qd6V", ):
-
-def recommend(song, average_vector):
+def recommend(track_id, average_vector):
     spotify_recs = get_data(song)
     centroids, clusters = kmeans(spotify_recs, 3)
     min_dist = FLOAT.MAXIMUM

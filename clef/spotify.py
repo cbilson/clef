@@ -276,3 +276,12 @@ def get_audio_analysis(user, track_id):
         return
 
     return result
+
+def get_recommendations(user, seed_track_ids):
+    data = dict(seed_tracks=seed_track_ids)
+    status, result = _get_json(user, 'https://api.spotify.com/v1/recommendations/', data=data)
+    if status != 200:
+        app.logger.error('Failed to request analysis.')
+        return
+
+    return result['tracks']
