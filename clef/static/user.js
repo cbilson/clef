@@ -149,6 +149,7 @@ function playSampleTracks(playlistDetails) {
 function clickPlaylist(item) {
   nowPlaying.dataset.coverUrl = item.target.dataset.coverUrl;
   nowPlaying.dataset.playlistId = item.target.dataset.id;
+  document.getElementById('recommend-panel').classList.remove('hide');
   var url = 'playlist/' + item.target.dataset.id + '/details';
   var icon = document.getElementById('playlist-loading');
   icon.classList.remove('hide');
