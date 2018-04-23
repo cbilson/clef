@@ -3,7 +3,8 @@ import scipy
 import random
 from sklearn import datasets #for testing only
 
-import clef.spotify
+from clef import app
+from clef.spotify import get_recommendations
 
 def kmeans(data, n_clusters):
     #find minimum and maximum dimensions
@@ -60,7 +61,9 @@ print(centroids)
 print(clusters)'''
 
 def recommend(user, track_id, average_vector):
-    spotify_recs = spotify.get_recommendations(user, [track_id])
+    spotify_recs = get_recommendations(user, [track_id])
+    app.logger.debug("spotify_recs: %s" % spotify_recs)
+    if spotify_recs is None: return None
     centroids, clusters = kmeans(spotify_recs, 3)
     min_dist = FLOAT.MAXIMUM
     minn = 3

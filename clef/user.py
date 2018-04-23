@@ -124,6 +124,21 @@ class User:
 
         return self.email
 
+    def average_attributes(self):
+        cur = mysql.connection.cursor()
+        cur.execute("""
+        select          avg(t.acousticness) as acousticness, avg(t.danceability) as danceability,
+                        avg(t.energy) as energy, avg(t.instrumentalness) as instrumentalness,
+                        avg(t.liveness) as liveness, avg(t.loudness) as loudness
+        from            User u
+                        inner join PlaylistFollow pf on u.id = pf.user_id
+                        inner join Playlist p on pf.playlist_id = p.id
+                        inner join PlaylistTrack pt on p.id = pt.playlist_id
+                        inner join Track t on pt.track_id = t.id
+        where           u.id=%s;
+        """, (self.id,))
+        return cur
+
 class UserArtistOverview:
     def for_user(user):
         cursor = mysql.connection.cursor()

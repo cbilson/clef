@@ -109,12 +109,14 @@ def user_playlist_details(user_id, playlist_id):
 def user_playlist_recommend(user_id, playlist_id):
     if 'user_id' not in session: abort(401)
     if session['user_id'] != user_id: abort(403)
+    user = User.load(session['user_id'])
     PlaylistDetailsView.get(user_id, playlist_id)
 
     # first cut, just pick a random song from the playlist and see where it takes us
+    user_average_vector = user.average_attributes()
     tracks = Track.for_playlist_id(playlist_id)
     track = random.choice(tracks)
-    recs = clef.clustering.recommend(user, track.id)
+    recs = clef.clustering.recommend(user, track.id, user_average_vector)
     return jsonpickle.encode(recs, unpicklable=False)
 
 @app.route('/admin/users')
