@@ -393,7 +393,7 @@ def refresh_playlists():
     click.echo('--------------------------------------------------------------------------------')
 
 @app.cli.command('update-stale-playlists')
-@click.option('--limit', default=1)
+@click.option('--limit', default=100)
 def update_stale_playlists(limit):
     start = time.time()
     cur = mysql.connection.cursor()
