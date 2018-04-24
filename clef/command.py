@@ -12,6 +12,7 @@ import json
 import jsonpickle
 import requests
 
+import clef.clustering as clustering
 import clef.spotify as spotify
 
 from colorama import Fore, Back, Style
@@ -674,6 +675,15 @@ def get_playlist_details(user_id, playlist_id):
 
     click.echo('result:')
     click.echo(jsonpickle.encode(view, unpicklable=True))
+
+@app.cli.command('recommend')
+@click.option('--user-id')
+@click.option('--seed-tracks', multiple=True)
+def recommend(user_id, seed_tracks):
+    user = User.load(user_id)
+    user_average_vector = user.average_attributes()
+    recs = clustering.recommend(user, seed_tracks, user_average_vector)
+    click.echo(recs)
 
 #
 # Testing Commands

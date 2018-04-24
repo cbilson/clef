@@ -51,7 +51,6 @@ class User:
         user.token_expiration = row[5]
         user.refresh_token = row[6]
         user.status = row[7]
-        app.logger.debug('Loaded user %s' % (user.id))
         return user
 
     def from_json(json, auth_info = None):
@@ -127,17 +126,29 @@ class User:
     def average_attributes(self):
         cur = mysql.connection.cursor()
         cur.execute("""
-        select          avg(t.acousticness) as acousticness, avg(t.danceability) as danceability,
+        select          u.id as user_id, count(*) as tracks,
+                        avg(t.acousticness) as acousticness, avg(t.danceability) as danceability,
                         avg(t.energy) as energy, avg(t.instrumentalness) as instrumentalness,
-                        avg(t.liveness) as liveness, avg(t.loudness) as loudness
+                        avg(t.liveness) as liveness, avg(t.loudness) as loudness,
+                        avg(t.speechiness) as speechiness, avg(t.valence) as valence, avg(t.tempo) as tempo
         from            User u
                         inner join PlaylistFollow pf on u.id = pf.user_id
                         inner join Playlist p on pf.playlist_id = p.id
                         inner join PlaylistTrack pt on p.id = pt.playlist_id
                         inner join Track t on pt.track_id = t.id
-        where           u.id=%s;
+        where           1=1
+                        and t.acousticness is not null
+                        and t.danceability is not null
+                        and t.energy is not null
+                        and t.instrumentalness is not null
+                        and t.liveness is not null
+                        and t.loudness is not null
+                        and t.speechiness is not null
+                        and t.valence is not null
+                        and t.tempo is not null
+                        and u.id=%s;
         """, (self.id,))
-        return cur
+        return cur.fetchone()
 
 class UserArtistOverview:
     def for_user(user):
