@@ -327,7 +327,7 @@ class PlaylistRefreshResults:
 
 class PlaylistSummaryView:
     """Gets a summary of a user's playlists - data shown on the /user/{id}."""
-    def __init__(self, id, name, track_count, image_width, image_height, image_url):
+    def __init__(self, id, name, track_count, image_width=None, image_height=None, image_url=None):
         self.id = id
         self.name = name
         self.track_count = track_count
@@ -341,18 +341,42 @@ class PlaylistSummaryView:
 
     def for_user(user):
         cursor = mysql.connection.cursor()
-        cursor.execute(
-            'select          pf.playlist_id, p.name, pi.width, pi.height, pi.width * pi.height as img_area, pi.url, count(*) '
-            'from            PlaylistFollow pf '
-            '                inner join Playlist p on pf.playlist_id = p.id '
-            '                inner join PlaylistTrack pt on p.id = pt.playlist_id '
-            '                left outer join PlaylistImage pi on p.id = pi.playlist_id '
-            'where           pf.user_id=%s '
-            'group by        p.id '
-            'having          img_area is null or img_area = max(img_area);',
-            (user.id,))
-        return [PlaylistSummaryView(id=row[0], name=row[1], image_width=row[2], image_height=row[3],
-                                    image_url=row[5], track_count=row[6]) for row in cursor]
+        cursor.execute("""
+            select          p.id, p.name, count(*) as tracks
+            from            PlaylistFollow pf
+                            inner join Playlist p on pf.playlist_id = p.id
+                            inner join PlaylistTrack pt on p.id = pt.playlist_id
+            where           pf.user_id = %s
+            group by        p.id, p.name
+            order by        p.name;
+
+            select          p.id, pi.width, pi.height, pi.url
+            from            PlaylistFollow pf
+                            inner join Playlist p on pf.playlist_id = p.id
+                            inner join PlaylistImage pi on p.id = pi.playlist_id
+            where           pf.user_id = %s;
+        """, (user.id,user.id))
+
+        playlists = list([PlaylistSummaryView(id=row[0], name=row[1], track_count=row[2]) for row in cursor])
+        images = dict()
+        cursor.nextset()
+        for row in cursor:
+            playlist_id = row[0]
+            if row[1] is None: continue
+            if row[2] is None: continue
+            area = row[1]*row[2]
+            if playlist_id not in images:
+                images[playlist_id] = dict(width=row[1], height=row[2], url=row[3], area=area)
+            elif area > images[playlist_id]['area']:
+                images[playlist_id] = dict(width=row[1], height=row[2], url=row[3], area=area)
+
+        for pl in playlists:
+            if pl.id in images:
+                pl.image_width = images[pl.id]['width']
+                pl.image_height = images[pl.id]['height']
+                pl.image_url = images[pl.id]['url']
+
+        return playlists
 
 class PlaylistDetailsView:
     """Gets details about a particular playlist for a user - data for /user/{uid}/playlist/{pid}."""
