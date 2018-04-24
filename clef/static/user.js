@@ -220,13 +220,25 @@ recommendButton.addEventListener('click', function() {
     return;
 
   recommendButton.classList.add('disabled');
+  recommended = document.getElementById('recommended');
+
+  recommended.classList.add('hide');
+
   var xhr = new XMLHttpRequest();
   xhr.open('GET', 'playlist/' + nowPlaying.dataset.playlistId + '/recommend');
   xhr.onload = function() {
-    recommendButton.classList.add('remove');
+    recommendButton.classList.remove('disabled');
+
     if (xhr.status == 200) {
+      recommended.classList.remove('hide');
       recs = JSON.parse(xhr.responseText);
-      document.getElementById('recommends').innerText = recs;
+      var track = document.getElementById('recommended-track');
+      track.innerText = recs.name;
+      track.href = recs.external_urls.spotify;
+
+      var artist = document.getElementById('recommended-artist');
+      artist.innerText = recs.artists[0].name;
+      artist.href = recs.artists.external_urls.spotify;
     }
   };
 
