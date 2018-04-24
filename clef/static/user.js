@@ -238,7 +238,7 @@ recommendButton.addEventListener('click', function() {
 
       var artist = document.getElementById('recommended-artist');
       artist.innerText = recs.artists[0].name;
-      artist.href = recs.artists.external_urls.spotify;
+      artist.href = recs.artists[0].external_urls.spotify;
     }
   };
 
